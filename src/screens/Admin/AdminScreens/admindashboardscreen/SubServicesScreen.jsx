@@ -44,13 +44,38 @@ const normalize = size =>
 
 // Helper function to get image source (local asset or URI)
 const getDisplayImageSource = image => {
-  if (typeof image === 'string' && image.startsWith('http')) {
+  console.log('getDisplayImageSource called with:', image);
+
+  // If image is a valid HTTP/HTTPS URL, return it
+  if (
+    typeof image === 'string' &&
+    (image.startsWith('http://') || image.startsWith('https://'))
+  ) {
+    console.log('Using HTTP image:', image);
     return { uri: image };
-  } else if (typeof image === 'number') {
+  }
+
+  // If image is a local file path (starts with file://)
+  if (typeof image === 'string' && image.startsWith('file://')) {
+    console.log('Using local file image:', image);
+    return { uri: image };
+  }
+
+  // If image is a number (local asset), return it directly
+  if (typeof image === 'number') {
+    console.log('Using local asset image:', image);
     return image;
   }
-  // Fallback to local image if no valid image source
-  return userProfileImage;
+
+  // If image is null, undefined, or empty string, return null
+  if (!image || image === '') {
+    console.log('No image provided, returning null');
+    return null;
+  }
+
+  // For any other case, log and return null
+  console.log('Unknown image format:', image, 'returning null');
+  return null;
 };
 
 // Renamed getSubServiceImage to getServiceDetailImage and updated cases for service context
@@ -115,10 +140,30 @@ const ServiceDetailCard = ({ serviceDetail, onOptionsPress, onAddPress }) => {
   const detailPrice =
     serviceDetail?.price != null ? String(serviceDetail.price) : 'N/A';
 
-  // Prioritize serviceDetail.image if it exists and is valid (e.g., a URI string), otherwise use local map
-  const imageSource =
-    getDisplayImageSource(serviceDetail?.image) ||
-    getServiceDetailImage(detailName);
+  // Get image source with proper fallback logic
+  let imageSource = null;
+
+  // First try to get the actual image from serviceDetail
+  if (serviceDetail?.image) {
+    imageSource = getDisplayImageSource(serviceDetail.image);
+  }
+
+  // If no valid image found, try to get from local mapping
+  if (!imageSource) {
+    imageSource = getServiceDetailImage(detailName);
+  }
+
+  // If still no image, use a default fallback
+  if (!imageSource) {
+    imageSource = userProfileImage; // Only as last resort
+  }
+
+  console.log(
+    'ServiceDetailCard image source for',
+    detailName,
+    ':',
+    imageSource,
+  );
 
   return (
     <View style={styles.cardContainer}>
@@ -263,12 +308,68 @@ const SubServicesScreen = () => {
 
   // Handle delete service detail
   const handleDeleteServiceDetail = serviceDetailToDelete => {
-    const updatedServiceDetails = serviceDetails.filter(
-      detail =>
-        detail._id !== serviceDetailToDelete._id &&
-        detail.id !== serviceDetailToDelete.id,
+    console.log('=== Deleting service detail ===');
+    console.log('Service detail to delete:', serviceDetailToDelete);
+
+    const detailName =
+      serviceDetailToDelete?.name ||
+      serviceDetailToDelete?.subServiceName ||
+      'Unknown';
+
+    Alert.alert(
+      'Delete Service Detail',
+      `Are you sure you want to delete "${detailName}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            console.log('Delete confirmed for:', detailName);
+            console.log(
+              'Current service details before deletion:',
+              serviceDetails.map(detail => ({
+                id: detail.id,
+                _id: detail._id,
+                name: detail.name || detail.subServiceName,
+              })),
+            );
+
+            // Create a unique identifier for comparison
+            const targetId =
+              serviceDetailToDelete._id || serviceDetailToDelete.id;
+
+            if (!targetId) {
+              console.error('No valid ID found for deletion');
+              Alert.alert('Error', 'Cannot delete item: No valid ID found');
+              return;
+            }
+
+            const updatedServiceDetails = serviceDetails.filter(detail => {
+              const detailId = detail._id || detail.id;
+              const shouldKeep = detailId !== targetId;
+              console.log(
+                `Comparing ${detailId} with ${targetId}: ${
+                  shouldKeep ? 'KEEP' : 'DELETE'
+                }`,
+              );
+              return shouldKeep;
+            });
+
+            console.log(
+              'Service details after deletion:',
+              updatedServiceDetails.map(detail => ({
+                id: detail.id,
+                _id: detail._id,
+                name: detail.name || detail.subServiceName,
+              })),
+            );
+
+            saveServiceDetailsToBackend(updatedServiceDetails);
+          },
+        },
+      ],
     );
-    saveServiceDetailsToBackend(updatedServiceDetails);
   };
 
   // New handler for the add to cart icon
@@ -285,14 +386,26 @@ const SubServicesScreen = () => {
 
   // Handle updating existing service detail
   const handleUpdateServiceDetail = updatedServiceDetail => {
+    console.log('=== Updating service detail ===');
+    console.log('Updated service detail:', updatedServiceDetail);
+
+    const targetId = updatedServiceDetail._id || updatedServiceDetail.id;
+
+    if (!targetId) {
+      console.error('No valid ID found for update');
+      Alert.alert('Error', 'Cannot update item: No valid ID found');
+      return;
+    }
+
     const updatedServiceDetails = serviceDetails.map(detail => {
-      if (
-        detail._id === updatedServiceDetail._id ||
-        detail.id === updatedServiceDetail.id
-      ) {
+      const detailId = detail._id || detail.id;
+
+      if (detailId === targetId) {
+        console.log(`Updating item with ID: ${detailId}`);
         return {
           ...detail,
-          name: updatedServiceDetail.subServiceName,
+          name:
+            updatedServiceDetail.subServiceName || updatedServiceDetail.name,
           price: updatedServiceDetail.price,
           time: updatedServiceDetail.time,
           description: updatedServiceDetail.description,
@@ -301,6 +414,16 @@ const SubServicesScreen = () => {
       }
       return detail;
     });
+
+    console.log(
+      'Service details after update:',
+      updatedServiceDetails.map(detail => ({
+        id: detail.id,
+        _id: detail._id,
+        name: detail.name || detail.subServiceName,
+      })),
+    );
+
     saveServiceDetailsToBackend(updatedServiceDetails);
   };
 

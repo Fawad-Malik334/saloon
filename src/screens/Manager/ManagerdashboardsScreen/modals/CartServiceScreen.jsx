@@ -15,6 +15,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useUser } from '../../../../context/UserContext';
 import Sidebar from '../../../../components/ManagerSidebar';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { generateClientFromBill } from '../../../../api/clients';
 
 // Import all modal components
 import CheckoutModal from './CheckoutModal';
@@ -120,24 +121,54 @@ const CartServiceScreen = () => {
   };
 
   // Function to handle the transition to the print bill modal
-  const handleOpenPrintBill = () => {
-    // 1. Create the billData object using all the state variables
-    const newBillData = {
-      clientName: clientName,
-      phoneNumber: phoneNumber,
-      notes: notes,
-      services: services, // Pass the actual services in the cart
-      subtotal: subtotal,
-      discount: discountAmount,
-      totalPrice: totalPrice,
-    };
+  const handleOpenPrintBill = async () => {
+    try {
+      // 1. Create the billData object using all the state variables
+      const newBillData = {
+        clientName: clientName,
+        phoneNumber: phoneNumber,
+        notes: notes,
+        services: services, // Pass the actual services in the cart
+        subtotal: subtotal,
+        discount: discountAmount,
+        totalPrice: totalPrice,
+      };
 
-    // 2. Set the billData state
-    setBillData(newBillData);
+      // 2. Set the billData state
+      setBillData(newBillData);
 
-    // 3. Close the CheckoutModal and open the PrintBillModal
-    setCheckoutModalVisible(false);
-    setPrintBillModalVisible(true);
+      // 3. Auto-generate client from bill data
+      try {
+        const clientResult = await generateClientFromBill(newBillData);
+        if (clientResult.success) {
+          if (clientResult.isNew) {
+            Alert.alert(
+              'New Client Created',
+              `Client "${clientName}" has been automatically added to your clients list.`,
+            );
+          } else {
+            Alert.alert(
+              'Existing Client',
+              `Client "${clientName}" already exists in your clients list.`,
+            );
+          }
+        }
+      } catch (clientError) {
+        console.error('Error generating client:', clientError);
+        // Don't block bill generation if client creation fails
+        Alert.alert(
+          'Warning',
+          'Bill generated successfully, but there was an issue saving client data.',
+        );
+      }
+
+      // 4. Close the CheckoutModal and open the PrintBillModal
+      setCheckoutModalVisible(false);
+      setPrintBillModalVisible(true);
+    } catch (error) {
+      console.error('Error in handleOpenPrintBill:', error);
+      Alert.alert('Error', 'Failed to generate bill. Please try again.');
+    }
   };
 
   // Handle checkout button press with validation

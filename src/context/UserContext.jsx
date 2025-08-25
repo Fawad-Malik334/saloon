@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { login as apiLogin, register as apiRegister } from '../api/auth';
+import { registerSimple, loginSimple } from '../api/auth';
 
 const UserContext = createContext();
 
@@ -51,7 +51,7 @@ export const UserProvider = ({ children }) => {
 
   const registerUser = useCallback(async (name, email, password) => {
     try {
-      await apiRegister({ username: email, password, role: 'admin' });
+      await registerSimple({ username: email, password, role: 'admin' });
       await AsyncStorage.setItem('adminFullName', name);
       await AsyncStorage.setItem('adminEmail', email);
       setUserName(name);
@@ -66,7 +66,7 @@ export const UserProvider = ({ children }) => {
 
   const loginUser = useCallback(async (email, password) => {
     try {
-      const result = await apiLogin({ username: email, password });
+      const result = await loginSimple({ username: email, password });
       const token = result?.token;
       if (!token) throw new Error('Invalid login response');
       await AsyncStorage.setItem('authToken', token);

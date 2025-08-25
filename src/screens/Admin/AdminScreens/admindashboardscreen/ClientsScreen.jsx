@@ -1,6 +1,6 @@
 // src/screens/admin/ClientsScreen/ClientsScreen.jsx
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,15 @@ import {
   Image,
   Dimensions,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useUser } from '../../../../context/UserContext';
 import moment from 'moment';
-import { useNavigation } from '@react-navigation/native'; // NavigatioN ko import karein
+import { useNavigation } from '@react-navigation/native';
 
 // AddClientModal ko rakhein, baaki View/Delete modal abhi ke liye hata dete hain
 import AddClientModal from './modals/AddClientModal';
@@ -27,99 +29,54 @@ const { width, height } = Dimensions.get('window');
 
 const userProfileImagePlaceholder = require('../../../../assets/images/foundation.jpeg');
 
-// InitialClientsData ko ab unique clients ke liye group karenge
-// Har client object mein ek 'visits' array hoga jisme unke har visit ka data hoga
+// Hardcoded client data for now
 const allClientsData = [
   {
-    id: 'CLI001',
-    name: 'Ali Ahmed',
-    phoneNumber: '03XX-XXXXXXX',
-    visits: [
-      {
-        visitId: 'VIS001_01',
-        date: 'June 25, 2025',
-        services: [
-          { name: 'Haircut', price: 50 },
-          { name: 'Shave', price: 20 },
-        ],
-      },
-      {
-        visitId: 'VIS001_02',
-        date: 'July 10, 2025',
-        services: [
-          { name: 'Facial', price: 100 },
-          { name: 'Massage', price: 80 },
-        ],
-      },
-      {
-        visitId: 'VIS001_03',
-        date: 'August 01, 2025',
-        services: [
-          { name: 'Haircut', price: 50 },
-          { name: 'Hair Color', price: 150 },
-        ],
-      },
-    ],
+    _id: '1',
+    clientId: 'CLT001',
+    name: 'John Doe',
+    phoneNumber: '+1234567890',
+    createdAt: '2024-01-15T10:30:00Z',
   },
   {
-    id: 'CLI002',
-    name: 'Sara Khan',
-    phoneNumber: '03XX-XXXXXXX',
-    visits: [
-      {
-        visitId: 'VIS002_01',
-        date: 'June 25, 2025',
-        services: [
-          { name: 'Manicure', price: 50 },
-          { name: 'Pedicure', price: 60 },
-        ],
-      },
-      {
-        visitId: 'VIS002_02',
-        date: 'July 20, 2025',
-        services: [{ name: 'Makeup', price: 200 }],
-      },
-    ],
+    _id: '2',
+    clientId: 'CLT002',
+    name: 'Jane Smith',
+    phoneNumber: '+1234567891',
+    createdAt: '2024-01-16T14:20:00Z',
   },
   {
-    id: 'CLI003',
-    name: 'Zainab Abbas',
-    phoneNumber: '03XX-XXXXXXX',
-    visits: [
-      {
-        visitId: 'VIS003_01',
-        date: 'June 26, 2025',
-        services: [{ name: 'Blunt Cut', price: 50 }],
-      },
-    ],
+    _id: '3',
+    clientId: 'CLT003',
+    name: 'Mike Johnson',
+    phoneNumber: '+1234567892',
+    createdAt: '2024-01-17T09:15:00Z',
   },
   {
-    id: 'CLI004',
-    name: 'Ahmed Raza',
-    phoneNumber: '03XX-XXXXXXX',
-    visits: [
-      {
-        visitId: 'VIS004_01',
-        date: 'June 26, 2025',
-        services: [
-          { name: 'Hair Wash', price: 20 },
-          { name: 'Facial', price: 100 },
-        ],
-      },
-      {
-        visitId: 'VIS004_02',
-        date: 'July 05, 2025',
-        services: [{ name: 'Haircut', price: 50 }],
-      },
-    ],
+    _id: '4',
+    clientId: 'CLT004',
+    name: 'Sarah Wilson',
+    phoneNumber: '+1234567893',
+    createdAt: '2024-01-18T16:45:00Z',
+  },
+  {
+    _id: '5',
+    clientId: 'CLT005',
+    name: 'David Brown',
+    phoneNumber: '+1234567894',
+    createdAt: '2024-01-19T11:30:00Z',
   },
 ];
 
 const ClientsScreen = () => {
   const { userName, salonName } = useUser();
-  const navigation = useNavigation(); // navigation hook use karein
+  const navigation = useNavigation();
+
+  // State management
   const [searchText, setSearchText] = useState('');
   const [clientsData, setClientsData] = useState(allClientsData);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedFilterDate, setSelectedFilterDate] = useState(null);
@@ -129,49 +86,73 @@ const ClientsScreen = () => {
     useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
 
-  // Ab client ka data unique hona chahiye (jaise aapne bataya)
-  const uniqueClients = useMemo(() => {
-    const clientMap = new Map();
-    clientsData.forEach(client => {
-      if (!clientMap.has(client.id)) {
-        clientMap.set(client.id, client);
-      }
-    });
-    return Array.from(clientMap.values());
-  }, [clientsData]);
+  // Load clients data (using hardcoded data)
+  const loadClients = async () => {
+    try {
+      setLoading(true);
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setClientsData(allClientsData);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+      Alert.alert('Error', 'Failed to load clients. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Search clients (local search)
+  const handleSearch = async text => {
+    setSearchText(text);
+    if (text.trim().length > 2) {
+      const filtered = allClientsData.filter(
+        client =>
+          client.name?.toLowerCase().includes(text.toLowerCase()) ||
+          client.clientId?.toLowerCase().includes(text.toLowerCase()) ||
+          client.phoneNumber?.toLowerCase().includes(text.toLowerCase()),
+      );
+      setClientsData(filtered);
+    } else if (text.trim().length === 0) {
+      // Reload all clients when search is cleared
+      setClientsData(allClientsData);
+    }
+  };
+
+  // Load clients on component mount
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  // Filter clients based on search and date
   const filteredClients = useMemo(() => {
-    let currentData = [...uniqueClients];
+    let currentData = [...clientsData];
 
     if (searchText) {
       currentData = currentData.filter(
         client =>
-          client.name.toLowerCase().includes(searchText.toLowerCase()) ||
-          client.id.toLowerCase().includes(searchText.toLowerCase()) ||
-          client.phoneNumber.toLowerCase().includes(searchText.toLowerCase()),
+          client.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+          client.clientId?.toLowerCase().includes(searchText.toLowerCase()) ||
+          client.phoneNumber?.toLowerCase().includes(searchText.toLowerCase()),
       );
     }
 
     if (selectedFilterDate) {
       const formattedSelectedDate =
-        moment(selectedFilterDate).format('MMMM DD, YYYY');
+        moment(selectedFilterDate).format('YYYY-MM-DD');
       currentData = currentData.filter(client => {
-        // Filter based on any of the client's visit dates
-        return client.visits.some(
-          visit =>
-            moment(visit.date, 'MMMM DD, YYYY').format('MMMM DD, YYYY') ===
-            formattedSelectedDate,
-        );
+        const clientDate = moment(client.createdAt).format('YYYY-MM-DD');
+        return clientDate === formattedSelectedDate;
       });
     }
+
     return currentData;
-  }, [uniqueClients, searchText, selectedFilterDate]);
+  }, [clientsData, searchText, selectedFilterDate]);
 
   // Function to generate the next sequential Client ID
   const generateNextClientId = () => {
     let maxIdNumber = 0;
     clientsData.forEach(client => {
-      const match = client.id.match(/^CLI(\d+)$/);
+      const match = client.clientId?.match(/^CLT(\d+)$/);
       if (match && match[1]) {
         const idNumber = parseInt(match[1], 10);
         if (!isNaN(idNumber) && idNumber > maxIdNumber) {
@@ -181,7 +162,7 @@ const ClientsScreen = () => {
     });
 
     const nextIdNumber = maxIdNumber + 1;
-    const nextFormattedId = `CLI${String(nextIdNumber).padStart(3, '0')}`;
+    const nextFormattedId = `CLT${String(nextIdNumber).padStart(3, '0')}`;
     return nextFormattedId;
   };
 
@@ -193,32 +174,30 @@ const ClientsScreen = () => {
     setIsAddClientModalVisible(false);
   };
 
-  const handleSaveNewClient = clientDataFromModal => {
-    const newClientId = generateNextClientId();
+  const handleSaveNewClient = async clientDataFromModal => {
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Add a default first visit to the new client
-    const newClient = {
-      id: newClientId,
-      name: clientDataFromModal.name,
-      phoneNumber: clientDataFromModal.phoneNumber,
-      // A new client will have their first visit on the current date
-      visits: [
-        {
-          visitId: `${newClientId}_01`,
-          date: moment().format('MMMM DD, YYYY'),
-          services: [{ name: 'Default Service', price: 0 }],
-        },
-      ],
-    };
+      const newClient = {
+        _id: Date.now().toString(),
+        clientId: generateNextClientId(),
+        name: clientDataFromModal.name,
+        phoneNumber: clientDataFromModal.phoneNumber,
+        createdAt: new Date().toISOString(),
+      };
 
-    setClientsData(prevData => [...prevData, newClient]);
-    alert('Client added successfully!');
-    handleCloseAddClientModal();
+      setClientsData(prev => [...prev, newClient]);
+      Alert.alert('Success', 'Client added successfully!');
+      handleCloseAddClientModal();
+    } catch (error) {
+      console.error('Error adding client:', error);
+      Alert.alert('Error', 'Failed to add client. Please try again.');
+    }
   };
 
-  // Yahan par changes hain - ab yeh function navigation use karega
+  // Handle view client history
   const handleViewClientHistory = client => {
-    // 'ClientHistory' screen par navigate karein aur client ka data pass karein
     navigation.navigate('ClientHistory', { client });
   };
 
@@ -232,12 +211,23 @@ const ClientsScreen = () => {
     setSelectedClient(null);
   };
 
-  const handleDeleteClientConfirm = () => {
+  const handleDeleteClientConfirm = async () => {
     if (selectedClient) {
-      setClientsData(prevData =>
-        prevData.filter(client => client.id !== selectedClient.id),
-      );
-      alert(`Client ${selectedClient.name} deleted.`);
+      try {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        setClientsData(prev =>
+          prev.filter(client => client._id !== selectedClient._id),
+        );
+        Alert.alert(
+          'Success',
+          `Client ${selectedClient.name} deleted successfully.`,
+        );
+      } catch (error) {
+        console.error('Error deleting client:', error);
+        Alert.alert('Error', 'Failed to delete client. Please try again.');
+      }
     }
     handleCloseDeleteClientModal();
   };
@@ -267,15 +257,13 @@ const ClientsScreen = () => {
         { backgroundColor: index % 2 === 0 ? '#2E2E2E' : '#1F1F1F' },
       ]}
     >
-      <Text style={styles.clientIdCell}>{item.id}</Text>
+      <Text style={styles.clientIdCell}>{item.clientId}</Text>
       <Text style={styles.clientNameCell}>{item.name}</Text>
       <Text style={styles.clientPhoneCell}>{item.phoneNumber}</Text>
-      {/* Ab coming date ki jagah last visit date show karein */}
       <Text style={styles.clientComingDateCell}>
-        {item.visits[item.visits.length - 1].date}
+        {moment(item.createdAt).format('MMM DD, YYYY')}
       </Text>
       <View style={styles.clientActionCell}>
-        {/* Yahan par functionality update ki hai */}
         <TouchableOpacity
           onPress={() => handleViewClientHistory(item)}
           style={styles.actionButton}
@@ -292,6 +280,16 @@ const ClientsScreen = () => {
     </View>
   );
 
+  // Show loading state
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#A98C27" />
+        <Text style={styles.loadingText}>Loading clients...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header Section */}
@@ -306,7 +304,7 @@ const ClientsScreen = () => {
               style={styles.searchInput}
               placeholder="Search anything"
               placeholderTextColor="#A9A9A9"
-              onChangeText={setSearchText}
+              onChangeText={handleSearch}
               value={searchText}
             />
             <Ionicons
@@ -402,7 +400,7 @@ const ClientsScreen = () => {
           <FlatList
             data={filteredClients}
             renderItem={renderClientItem}
-            keyExtractor={item => item.id}
+            keyExtractor={item => item._id}
             style={styles.table}
             ListEmptyComponent={() => (
               <View style={styles.noDataContainer}>
@@ -661,6 +659,17 @@ const styles = StyleSheet.create({
   noDataText: {
     color: '#A9A9A9',
     fontSize: width * 0.02,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#111',
+  },
+  loadingText: {
+    color: '#A9A9A9',
+    fontSize: width * 0.02,
+    marginTop: 10,
   },
 });
 

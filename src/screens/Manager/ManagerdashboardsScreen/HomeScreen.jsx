@@ -19,16 +19,13 @@ import { useUser } from '../../../context/UserContext';
 import ServiceDetailModal from './modals/ServiceDetailModal';
 // Navigation aur API library
 import { useNavigation } from '@react-navigation/native';
-import axios from 'axios';
-import { BASE_URL } from '../../../api/config';
+// Import centralized API functions
+import { getServices } from '../../../api';
 
 const { width, height } = Dimensions.get('window');
 
 // Placeholder images
 const userProfileImagePlaceholder = require('../../../assets/images/logo.png');
-
-// Use shared API base URL
-const API_BASE_URL = BASE_URL;
 
 /**
  * Helper function to handle image sources (local asset or URI).
@@ -36,11 +33,12 @@ const API_BASE_URL = BASE_URL;
  * @returns {object|null} - The image source object for React Native.
  */
 const getDisplayImageSource = image => {
-  if (typeof image === 'string') {
+  if (typeof image === 'string' && image.startsWith('http')) {
     return { uri: image };
   } else if (typeof image === 'number') {
     return image;
   }
+  // Fallback for cases where image might be a broken URI or not present
   return null;
 };
 
@@ -51,15 +49,17 @@ const getDisplayImageSource = image => {
  * @param {function} props.onPress - Function to handle the card press (for navigation).
  */
 const ServiceCard = ({ service, onPress }) => {
+  const imageSource = getDisplayImageSource(service.image);
+
   return (
     <TouchableOpacity
       style={styles.serviceCard}
       onPress={() => onPress(service)}
     >
       {/* Service Image */}
-      {service.image ? (
+      {imageSource ? (
         <Image
-          source={getDisplayImageSource(service.image)}
+          source={imageSource}
           style={styles.serviceImage}
           resizeMode="cover"
         />
@@ -106,15 +106,15 @@ const HomeScreen = () => {
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/services`);
+      const data = await getServices();
       // Services ki list ko update karein
-      setServices(response.data);
+      setServices(data);
       setError(null);
     } catch (e) {
       console.error('Error fetching services:', e);
       // Agar API se data lene mein masla ho to error message dikhayen
       setError(
-        'خدمات کو لوڈ کرنے میں ناکامی۔ براہ کرم یقینی بنائیں کہ بیک اینڈ سرور چل رہا ہے اور IP ایڈریس صحیح ہے۔',
+        'Failed to load services. Please ensure your backend server is running and the IP address is correct.',
       );
     } finally {
       setLoading(false);
@@ -142,7 +142,7 @@ const HomeScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#A99226" />
-        <Text style={styles.loadingText}>خدمات لوڈ ہو رہی ہیں...</Text>
+        <Text style={styles.loadingText}>Loading services...</Text>
       </View>
     );
   }
@@ -151,6 +151,9 @@ const HomeScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchServices}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -220,9 +223,7 @@ const HomeScreen = () => {
               />
             ))
           ) : (
-            <Text style={styles.noServicesText}>
-              کوئی خدمات دستیاب نہیں ہیں۔
-            </Text>
+            <Text style={styles.noServicesText}>No services available.</Text>
           )}
         </View>
       </ScrollView>
@@ -262,6 +263,18 @@ const styles = StyleSheet.create({
     fontSize: width * 0.03,
     marginTop: 10,
     textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#A99226',
+    paddingVertical: height * 0.012,
+    paddingHorizontal: width * 0.035,
+    borderRadius: 8,
+    marginTop: height * 0.02,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: width * 0.018,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',

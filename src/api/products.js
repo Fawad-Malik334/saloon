@@ -1,8 +1,8 @@
 // src/api/products.js
-import API_BASE_URL from './config'; // default export exists
+import { BASE_URL } from './config'; // default export exists
 
 // Define the base endpoint for products mounted at /api/products
-const PRODUCTS_ENDPOINT = `${API_BASE_URL}/products`;
+const PRODUCTS_ENDPOINT = `${BASE_URL}/products`;
 
 // Helper function to create FormData for product uploads
 const createProductFormData = productData => {

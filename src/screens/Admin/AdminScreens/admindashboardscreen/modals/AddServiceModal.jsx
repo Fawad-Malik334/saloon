@@ -1,6 +1,6 @@
 // src/screens/AdminPanel/modals/AddServiceModal.js
 
-import React, { useState, useEffect, useRef } from 'react'; // Import useRef
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -19,16 +19,13 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const { width } = Dimensions.get('window');
 
-// Helper function to get image source (local asset number or URI string)
+// Helper function to get image source
 const getServiceImageSource = image => {
   if (typeof image === 'string' && image.startsWith('http')) {
-    // Backend se mila hua URL (existing image)
     return { uri: image };
   } else if (typeof image === 'string') {
-    // Local URI (newly selected image from gallery)
     return { uri: image };
   } else if (typeof image === 'number') {
-    // For local `require` images (if you have any static placeholders)
     return image;
   }
   return null;
@@ -37,8 +34,8 @@ const getServiceImageSource = image => {
 const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
   // State for main service details
   const [serviceName, setServiceName] = useState('');
-  const [serviceImage, setServiceImage] = useState(null); // Stores URI string (local) or URL (backend) or local asset number
-  const [subServices, setSubServices] = useState([]); // Array of sub-service objects
+  const [serviceImage, setServiceImage] = useState(null);
+  const [subServices, setSubServices] = useState([]);
 
   // State for current sub-service being added/edited
   const [currentSubServiceId, setCurrentSubServiceId] = useState(null);
@@ -46,10 +43,22 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
   const [currentPrice, setCurrentPrice] = useState('');
   const [currentTime, setCurrentTime] = useState('');
   const [currentDescription, setCurrentDescription] = useState('');
-  const [currentSubServiceImage, setCurrentSubServiceImage] = useState(null); // Stores URI string (local) or URL (backend)
+  const [currentSubServiceImage, setCurrentSubServiceImage] = useState(null);
 
-  // Ref to track if data has been initialized to prevent re-initialization on every render
+  // Ref to track if data has been initialized
   const isInitialDataLoaded = useRef(false);
+
+  // Counter for generating unique IDs
+  const [idCounter, setIdCounter] = useState(0);
+
+  // Helper function to generate truly unique IDs
+  const generateUniqueId = () => {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 15);
+    const counter = idCounter;
+    setIdCounter(prev => prev + 1);
+    return `sub_${timestamp}_${random}_${counter}`;
+  };
 
   // Helper to reset current sub-service input fields
   const resetCurrentSubServiceFields = () => {
@@ -71,49 +80,43 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
     );
 
     if (visible) {
-      // Reset the flag when modal becomes visible, preparing for new data load
       isInitialDataLoaded.current = false;
 
       if (initialServiceData) {
-        // Pre-fill main service details ONLY if in edit mode
-        console.log(
-          'EDIT MODE: Pre-filling serviceName with:',
-          initialServiceData.serviceName, // Changed from initialServiceData.name
+        // EDIT MODE: Pre-fill with existing data
+        console.log('EDIT MODE: Pre-filling with:', initialServiceData);
+        setServiceName(
+          initialServiceData.serviceName || initialServiceData.title || '',
         );
-        console.log(
-          'EDIT MODE: Pre-filling serviceImage with:',
-          initialServiceData.serviceImage, // Changed from initialServiceData.image
+        setServiceImage(
+          initialServiceData.serviceImage || initialServiceData.image || null,
         );
-        setServiceName(initialServiceData.serviceName || ''); // Ensure correct property name
-        setServiceImage(initialServiceData.serviceImage || null); // Ensure correct property name
         setSubServices(initialServiceData.subServices || []);
       } else {
-        // Clear all fields if in add mode (no initialServiceData)
-        console.log('ADD MODE: Clearing all service fields.');
+        // ADD MODE: Clear all fields
+        console.log('ADD MODE: Clearing all fields');
         setServiceName('');
         setServiceImage(null);
         setSubServices([]);
       }
-      // Always reset sub-service input fields when modal becomes visible,
-      // regardless of add or edit mode for the main service.
       resetCurrentSubServiceFields();
-      isInitialDataLoaded.current = false; // Reset the flag
+      isInitialDataLoaded.current = true;
     } else {
-      // When modal is hidden, reset all states to ensure clean slate for next open
-      console.log('Modal is hidden, resetting all states.');
+      // Modal hidden - reset all states
+      console.log('Modal hidden, resetting states');
       setServiceName('');
       setServiceImage(null);
       setSubServices([]);
       resetCurrentSubServiceFields();
-      isInitialDataLoaded.current = false; // Reset the flag
+      isInitialDataLoaded.current = false;
     }
-  }, [visible, initialServiceData]); // Depend on 'visible' and 'initialServiceData'
+  }, [visible, initialServiceData]);
 
-  // Function to handle picking an image (for main service or sub-service)
+  // Function to handle picking an image
   const pickImage = type => {
     const options = {
       mediaType: 'photo',
-      quality: 0.7, // Reduce quality for faster uploads
+      quality: 0.7,
     };
 
     launchImageLibrary(options, response => {
@@ -124,7 +127,6 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
         Alert.alert('Error', 'Failed to pick image. Please try again.');
       } else if (response.assets && response.assets.length > 0) {
         const asset = response.assets[0];
-        // Store the URI
         if (type === 'service') {
           console.log('Selected service image URI:', asset.uri);
           setServiceImage(asset.uri);
@@ -138,6 +140,16 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
 
   // Function to add a new sub-service or update an existing one
   const handleAddOrUpdateSubService = () => {
+    console.log('=== handleAddOrUpdateSubService called ===');
+    console.log('Current values:', {
+      name: currentSubServiceName,
+      price: currentPrice,
+      time: currentTime,
+      description: currentDescription,
+      image: currentSubServiceImage,
+      id: currentSubServiceId,
+    });
+
     if (
       !currentSubServiceName.trim() ||
       !currentPrice.trim() ||
@@ -151,44 +163,58 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
     }
 
     const newOrUpdatedSubService = {
-      // Use existing ID if in edit mode, otherwise generate a new unique ID
-      id: currentSubServiceId || Math.random().toString(36).substring(2, 15), // More robust than Date.now() for unique IDs
-      subServiceName: currentSubServiceName.trim(),
-      price: currentPrice.trim(),
+      id: currentSubServiceId || generateUniqueId(),
+      name: currentSubServiceName.trim(), // Backend expects 'name'
+      price: parseFloat(currentPrice.trim()) || 0, // Convert to number
       time: currentTime.trim(),
       description: currentDescription.trim(),
-      subServiceImage: currentSubServiceImage,
+      image: currentSubServiceImage, // Backend expects 'image'
     };
+
+    console.log('New/Updated sub-service object:', newOrUpdatedSubService);
 
     let updatedSubServices;
     if (currentSubServiceId) {
       // Update existing sub-service
+      console.log(
+        'Updating existing sub-service with ID:',
+        currentSubServiceId,
+      );
       updatedSubServices = subServices.map(sub =>
         sub.id === currentSubServiceId ? newOrUpdatedSubService : sub,
       );
       Alert.alert('Success', 'Sub-service updated successfully!');
     } else {
       // Add new sub-service
+      console.log('Adding new sub-service');
       updatedSubServices = [...subServices, newOrUpdatedSubService];
       Alert.alert('Success', 'Sub-service added successfully!');
     }
-    setSubServices(updatedSubServices); // Update the state
-    resetCurrentSubServiceFields(); // Clear input fields after action
+
+    console.log('Updated subServices array:', updatedSubServices);
+    setSubServices(updatedSubServices);
+    resetCurrentSubServiceFields();
   };
 
   // Function to load a sub-service into the input fields for editing
   const handleEditSubService = sub => {
-    console.log('Editing sub-service:', sub.subServiceName);
+    console.log('Editing sub-service:', sub);
     setCurrentSubServiceId(sub.id);
-    setCurrentSubServiceName(sub.subServiceName);
-    setCurrentPrice(sub.price);
-    setCurrentTime(sub.time);
-    setCurrentDescription(sub.description);
-    setCurrentSubServiceImage(sub.subServiceImage);
+    setCurrentSubServiceName(sub.name || sub.subServiceName || '');
+    setCurrentPrice(sub.price ? sub.price.toString() : '');
+    setCurrentTime(sub.time || '');
+    setCurrentDescription(sub.description || '');
+    setCurrentSubServiceImage(sub.image || sub.subServiceImage || null);
   };
 
   // Function to delete a sub-service
   const handleDeleteSubService = id => {
+    console.log('=== Deleting sub-service with ID:', id);
+    console.log(
+      'Current sub-services before deletion:',
+      subServices.map(sub => ({ id: sub.id, name: sub.name })),
+    );
+
     Alert.alert(
       'Delete Sub-service',
       'Are you sure you want to delete this sub-service?',
@@ -197,11 +223,14 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
         {
           text: 'Delete',
           onPress: () => {
-            setSubServices(prevSubServices =>
-              prevSubServices.filter(sub => sub.id !== id),
+            const updatedSubServices = subServices.filter(sub => sub.id !== id);
+            console.log(
+              'Sub-services after deletion:',
+              updatedSubServices.map(sub => ({ id: sub.id, name: sub.name })),
             );
+
+            setSubServices(updatedSubServices);
             Alert.alert('Success', 'Sub-service deleted successfully!');
-            // If the deleted sub-service was currently being edited, clear the fields
             if (currentSubServiceId === id) {
               resetCurrentSubServiceFields();
             }
@@ -213,18 +242,22 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
     );
   };
 
-  // Function to save the main service (called by Save/Update button)
+  // Function to save the main service
   const handleSave = () => {
-    if (!serviceName.trim() || serviceImage === null) {
-      Alert.alert(
-        'Missing Info',
-        'Please fill in Service Name and select a Service Image.',
-      );
+    console.log('=== handleSave called ===');
+
+    // Validation
+    if (!serviceName.trim()) {
+      Alert.alert('Missing Info', 'Please fill in Service Name.');
       return;
     }
 
-    // Before saving the main service, ensure any *currently entered* sub-service data
-    // in the input fields is either added/updated, or the user is warned.
+    if (!serviceImage) {
+      Alert.alert('Missing Info', 'Please select a Service Image.');
+      return;
+    }
+
+    // Check for unsaved sub-service changes
     if (
       currentSubServiceName.trim() ||
       currentPrice.trim() ||
@@ -234,13 +267,12 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
     ) {
       Alert.alert(
         'Unsaved Sub-service Changes',
-        'You have unsaved changes in the sub-service input fields. Please "Add/Update Current Sub Service" or clear the fields by cancelling to discard before saving the main service.',
+        'You have unsaved changes in the sub-service input fields. Please "Add/Update Current Sub Service" or clear the fields before saving the main service.',
         [{ text: 'OK' }],
       );
       return;
     }
 
-    // Final check for sub-services: ensure there's at least one sub-service in the array.
     if (subServices.length === 0) {
       Alert.alert('Missing Info', 'Please add at least one sub-service.');
       return;
@@ -249,43 +281,107 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
     let serviceToSave = {};
     let isFormData = false;
 
-    // Check if the service image is a new local URI (meaning it needs to be uploaded)
-    // and if it's not already a backend URL (http/https)
+    // Check if service image is a new local URI
     const isNewImageSelected =
       typeof serviceImage === 'string' && !serviceImage.startsWith('http');
 
     if (isNewImageSelected) {
-      // If a new image is selected, use FormData
+      // Use FormData for new image upload
+      console.log('Creating FormData for new image upload');
       const formData = new FormData();
-      formData.append('name', serviceName.trim());
-      formData.append('subServices', JSON.stringify(subServices)); // Stringify complex array
+      formData.append('title', serviceName.trim()); // Backend expects 'title'
+
+      // Process sub-services for FormData
+      const processedSubServices = subServices.map((sub, index) => {
+        const processedSub = {
+          name: sub.name || sub.subServiceName,
+          price: parseFloat(sub.price) || 0,
+          time: sub.time,
+          description: sub.description,
+          image: sub.image || sub.subServiceImage,
+        };
+
+        // Add new sub-service images to FormData
+        if (
+          sub.image &&
+          typeof sub.image === 'string' &&
+          !sub.image.startsWith('http')
+        ) {
+          formData.append(`subServiceImage${index}`, {
+            uri: sub.image,
+            name: `subservice_image_${index}_${Date.now()}.jpg`,
+            type: 'image/jpeg',
+          });
+        }
+
+        return processedSub;
+      });
+
+      formData.append('subServices', JSON.stringify(processedSubServices));
       formData.append(
         'isHiddenFromEmployee',
         initialServiceData?.isHiddenFromEmployee || false,
       );
 
-      // Append image file
+      // Add main service image
       formData.append('image', {
         uri: serviceImage,
-        name: `service_image_${Date.now()}.jpg`, // Unique name for the image
-        type: 'image/jpeg', // Adjust type if supporting other formats
+        name: `service_image_${Date.now()}.jpg`,
+        type: 'image/jpeg',
       });
+
       serviceToSave = formData;
       isFormData = true;
     } else {
-      // If no new image selected or it's an existing URL, send as JSON
+      // Use JSON for existing images
+      console.log('Creating JSON payload for existing images');
+      const processedSubServices = subServices.map(sub => ({
+        name: sub.name || sub.subServiceName,
+        price: parseFloat(sub.price) || 0,
+        time: sub.time,
+        description: sub.description,
+        image: sub.image || sub.subServiceImage,
+      }));
+
       serviceToSave = {
-        id: initialServiceData?.id, // Only include ID if in edit mode
-        name: serviceName.trim(),
-        image: serviceImage, // This will be the existing URL if no new image was picked
-        subServices: subServices,
+        id: initialServiceData?.id,
+        title: serviceName.trim(), // Backend expects 'title'
+        image: serviceImage,
+        subServices: processedSubServices,
         isHiddenFromEmployee: initialServiceData?.isHiddenFromEmployee || false,
       };
       isFormData = false;
     }
 
-    console.log('Saving service (isFormData:', isFormData, '):', serviceToSave);
-    onSave(serviceToSave); // Pass the finalized service data to the parent
+    console.log(
+      'Final serviceToSave (isFormData:',
+      isFormData,
+      '):',
+      serviceToSave,
+    );
+
+    // Validate serviceToSave
+    if (!serviceToSave) {
+      console.error('serviceToSave is undefined or null');
+      Alert.alert('Error', 'Failed to prepare service data. Please try again.');
+      return;
+    }
+
+    // Debug logging
+    if (isFormData && serviceToSave instanceof FormData) {
+      console.log('FormData contents:');
+      try {
+        for (let [key, value] of serviceToSave.entries()) {
+          console.log(`${key}:`, value);
+        }
+      } catch (error) {
+        console.log('Error logging FormData:', error);
+      }
+    } else {
+      console.log('JSON data:', JSON.stringify(serviceToSave, null, 2));
+    }
+
+    onSave(serviceToSave);
   };
 
   return (
@@ -300,17 +396,19 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
           <TouchableOpacity
             style={styles.closeIcon}
             onPress={() => {
-              resetCurrentSubServiceFields(); // Clear sub-service fields on close
-              onClose(); // Call parent's onClose
+              resetCurrentSubServiceFields();
+              onClose();
             }}
           >
             <Icon name="close" size={24} color="#fff" />
           </TouchableOpacity>
+
           <ScrollView contentContainerStyle={styles.scroll}>
             <Text style={styles.heading}>
               {initialServiceData ? 'Edit Service' : 'Add New Service'}
             </Text>
 
+            {/* Service Details Section */}
             <Text style={styles.label}>Service Details</Text>
             <TextInput
               style={styles.input}
@@ -344,6 +442,7 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
               )}
             </TouchableOpacity>
 
+            {/* Sub Service Details Section */}
             <Text style={styles.label}>Sub Service Details</Text>
             <TextInput
               style={styles.input}
@@ -400,6 +499,7 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
               )}
             </TouchableOpacity>
 
+            {/* Add/Update Sub Service Button */}
             <TouchableOpacity
               style={styles.subServiceButton}
               onPress={handleAddOrUpdateSubService}
@@ -416,44 +516,98 @@ const AddServiceModal = ({ visible, onClose, onSave, initialServiceData }) => {
               </Text>
             </TouchableOpacity>
 
-            {/* List of existing sub-services */}
-            {subServices.map((sub, index) => (
-              <View key={sub.id || index} style={styles.subServiceItem}>
-                <View style={styles.subServiceTextContainer}>
-                  <Text style={styles.subServiceItemText}>
-                    {sub.subServiceName} - ${sub.price} - {sub.time}
-                  </Text>
-                  {sub.description ? (
-                    <Text style={styles.subServiceDescriptionText}>
-                      {sub.description}
-                    </Text>
-                  ) : null}
-                </View>
-                {sub.subServiceImage && (
-                  <Image
-                    source={getServiceImageSource(sub.subServiceImage)}
-                    style={styles.subServicePreviewImage}
-                  />
-                )}
-                <View style={styles.subServiceActions}>
-                  <TouchableOpacity onPress={() => handleEditSubService(sub)}>
-                    <Ionicons name="create-outline" size={20} color="#A98C27" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteSubService(sub.id)}
-                  >
-                    <Ionicons name="trash-outline" size={20} color="#FF6347" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+            {/* Clear Fields Button */}
+            {(currentSubServiceName.trim() ||
+              currentPrice.trim() ||
+              currentTime.trim() ||
+              currentDescription.trim() ||
+              currentSubServiceImage) && (
+              <TouchableOpacity
+                style={[
+                  styles.subServiceButton,
+                  { backgroundColor: '#666', marginTop: 5 },
+                ]}
+                onPress={resetCurrentSubServiceFields}
+              >
+                <Ionicons name="close" size={20} color="#fff" />
+                <Text style={styles.subServiceButtonText}>Clear Fields</Text>
+              </TouchableOpacity>
+            )}
 
+            {/* Debug Section */}
+            <View style={styles.debugSection}>
+              <Text style={styles.debugText}>
+                Current Sub-services: {subServices.length}
+              </Text>
+              {subServices.length > 0 && (
+                <Text style={styles.debugText}>
+                  Last added:{' '}
+                  {subServices[subServices.length - 1]?.name || 'Unknown'}
+                </Text>
+              )}
+              {subServices.length > 0 && (
+                <Text style={styles.debugText}>
+                  IDs:{' '}
+                  {subServices
+                    .map(sub => sub.id?.substring(0, 10) + '...')
+                    .join(', ')}
+                </Text>
+              )}
+            </View>
+
+            {/* List of existing sub-services */}
+            {subServices.map((sub, index) => {
+              console.log('Rendering sub-service:', sub);
+              return (
+                <View key={sub.id || index} style={styles.subServiceItem}>
+                  <View style={styles.subServiceTextContainer}>
+                    <Text style={styles.subServiceItemText}>
+                      {sub.name || sub.subServiceName || 'Unnamed Service'} - $
+                      {sub.price || '0'} - {sub.time || 'N/A'}
+                    </Text>
+                    {sub.description ? (
+                      <Text style={styles.subServiceDescriptionText}>
+                        {sub.description}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {sub.image || sub.subServiceImage ? (
+                    <Image
+                      source={getServiceImageSource(
+                        sub.image || sub.subServiceImage,
+                      )}
+                      style={styles.subServicePreviewImage}
+                    />
+                  ) : null}
+                  <View style={styles.subServiceActions}>
+                    <TouchableOpacity onPress={() => handleEditSubService(sub)}>
+                      <Ionicons
+                        name="create-outline"
+                        size={20}
+                        color="#A98C27"
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteSubService(sub.id)}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={20}
+                        color="#FF6347"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+
+            {/* Action Buttons */}
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => {
-                  resetCurrentSubServiceFields(); // Clear sub-service fields on close
-                  onClose(); // Call parent's onClose
+                  resetCurrentSubServiceFields();
+                  onClose();
                 }}
               >
                 <Text style={styles.closeButtonText}>Close</Text>
@@ -632,5 +786,18 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#000', // Adjusted for better contrast
     fontWeight: 'bold',
+  },
+  debugSection: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#2c2c2c',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  debugText: {
+    color: '#fff',
+    fontSize: 12,
+    textAlign: 'center',
   },
 });

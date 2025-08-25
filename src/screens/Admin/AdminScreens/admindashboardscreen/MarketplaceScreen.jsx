@@ -41,19 +41,56 @@ const userProfileImagePlaceholder = require('../../../../assets/images/foundatio
 
 // Helper function to get image source (local asset or URI)
 const getDisplayImageSource = image => {
-  if (typeof image === 'string' && image.startsWith('http')) {
+  console.log('getDisplayImageSource called with:', image);
+
+  // If image is a valid HTTP/HTTPS URL, return it
+  if (
+    typeof image === 'string' &&
+    (image.startsWith('http://') || image.startsWith('https://'))
+  ) {
+    console.log('Using HTTP image:', image);
     return { uri: image };
-  } else if (typeof image === 'number') {
+  }
+
+  // If image is a local file path (starts with file://)
+  if (typeof image === 'string' && image.startsWith('file://')) {
+    console.log('Using local file image:', image);
+    return { uri: image };
+  }
+
+  // If image is a number (local asset), return it directly
+  if (typeof image === 'number') {
+    console.log('Using local asset image:', image);
     return image;
   }
-  // Fallback to local image if no valid image source
-  return haircutImage;
+
+  // If image is null, undefined, or empty string, return null
+  if (!image || image === '') {
+    console.log('No image provided, returning null');
+    return null;
+  }
+
+  // For any other case, log and return null
+  console.log('Unknown image format:', image, 'returning null');
+  return null;
 };
 
 // ProductCard component to display individual product
 const ProductCard = ({ product, onOptionsPress, onPress }) => {
-  // Determine if the image source is a local asset or a URI
-  const imageSource = getDisplayImageSource(product.image);
+  // Get image source with proper fallback logic
+  let imageSource = null;
+
+  // First try to get the actual image from product
+  if (product?.image) {
+    imageSource = getDisplayImageSource(product.image);
+  }
+
+  // If no valid image found, use a default fallback
+  if (!imageSource) {
+    imageSource = haircutImage; // Only as last resort
+  }
+
+  console.log('ProductCard image source for', product?.name, ':', imageSource);
 
   return (
     <TouchableOpacity

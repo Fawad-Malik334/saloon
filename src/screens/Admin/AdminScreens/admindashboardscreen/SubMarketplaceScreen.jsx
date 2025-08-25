@@ -44,13 +44,38 @@ const normalize = size =>
 
 // Helper function to get image source (local asset or URI)
 const getDisplayImageSource = image => {
-  if (typeof image === 'string' && image.startsWith('http')) {
+  console.log('getDisplayImageSource called with:', image);
+
+  // If image is a valid HTTP/HTTPS URL, return it
+  if (
+    typeof image === 'string' &&
+    (image.startsWith('http://') || image.startsWith('https://'))
+  ) {
+    console.log('Using HTTP image:', image);
     return { uri: image };
-  } else if (typeof image === 'number') {
+  }
+
+  // If image is a local file path (starts with file://)
+  if (typeof image === 'string' && image.startsWith('file://')) {
+    console.log('Using local file image:', image);
+    return { uri: image };
+  }
+
+  // If image is a number (local asset), return it directly
+  if (typeof image === 'number') {
+    console.log('Using local asset image:', image);
     return image;
   }
-  // Fallback to local image if no valid image source
-  return userProfileImage;
+
+  // If image is null, undefined, or empty string, return null
+  if (!image || image === '') {
+    console.log('No image provided, returning null');
+    return null;
+  }
+
+  // For any other case, log and return null
+  console.log('Unknown image format:', image, 'returning null');
+  return null;
 };
 
 // Renamed getSubServiceImage to getProductDetailImage and updated cases for product context
@@ -115,10 +140,30 @@ const ProductDetailCard = ({ productDetail, onOptionsPress, onAddPress }) => {
   const detailPrice =
     productDetail?.price != null ? String(productDetail.price) : 'N/A';
 
-  // Prioritize productDetail.image if it exists and is valid (e.g., a URI string), otherwise use local map
-  const imageSource =
-    getDisplayImageSource(productDetail?.image) ||
-    getProductDetailImage(detailName);
+  // Get image source with proper fallback logic
+  let imageSource = null;
+
+  // First try to get the actual image from productDetail
+  if (productDetail?.image) {
+    imageSource = getDisplayImageSource(productDetail.image);
+  }
+
+  // If no valid image found, try to get from local mapping
+  if (!imageSource) {
+    imageSource = getProductDetailImage(detailName);
+  }
+
+  // If still no image, use a default fallback
+  if (!imageSource) {
+    imageSource = userProfileImage; // Only as last resort
+  }
+
+  console.log(
+    'ProductDetailCard image source for',
+    detailName,
+    ':',
+    imageSource,
+  );
 
   return (
     <View style={styles.cardContainer}>
@@ -263,12 +308,68 @@ const SubMarketplaceScreen = () => {
 
   // Handle delete product detail
   const handleDeleteProductDetail = productDetailToDelete => {
-    const updatedProductDetails = productDetails.filter(
-      detail =>
-        detail._id !== productDetailToDelete._id &&
-        detail.id !== productDetailToDelete.id,
+    console.log('=== Deleting product detail ===');
+    console.log('Product detail to delete:', productDetailToDelete);
+
+    const detailName =
+      productDetailToDelete?.name ||
+      productDetailToDelete?.productDetailName ||
+      'Unknown';
+
+    Alert.alert(
+      'Delete Product Detail',
+      `Are you sure you want to delete "${detailName}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            console.log('Delete confirmed for:', detailName);
+            console.log(
+              'Current product details before deletion:',
+              productDetails.map(detail => ({
+                id: detail.id,
+                _id: detail._id,
+                name: detail.name || detail.productDetailName,
+              })),
+            );
+
+            // Create a unique identifier for comparison
+            const targetId =
+              productDetailToDelete._id || productDetailToDelete.id;
+
+            if (!targetId) {
+              console.error('No valid ID found for deletion');
+              Alert.alert('Error', 'Cannot delete item: No valid ID found');
+              return;
+            }
+
+            const updatedProductDetails = productDetails.filter(detail => {
+              const detailId = detail._id || detail.id;
+              const shouldKeep = detailId !== targetId;
+              console.log(
+                `Comparing ${detailId} with ${targetId}: ${
+                  shouldKeep ? 'KEEP' : 'DELETE'
+                }`,
+              );
+              return shouldKeep;
+            });
+
+            console.log(
+              'Product details after deletion:',
+              updatedProductDetails.map(detail => ({
+                id: detail.id,
+                _id: detail._id,
+                name: detail.name || detail.productDetailName,
+              })),
+            );
+
+            saveProductDetailsToBackend(updatedProductDetails);
+          },
+        },
+      ],
     );
-    saveProductDetailsToBackend(updatedProductDetails);
   };
 
   // New handler for the add to cart icon
@@ -285,14 +386,26 @@ const SubMarketplaceScreen = () => {
 
   // Handle updating existing product detail
   const handleUpdateProductDetail = updatedProductDetail => {
+    console.log('=== Updating product detail ===');
+    console.log('Updated product detail:', updatedProductDetail);
+
+    const targetId = updatedProductDetail._id || updatedProductDetail.id;
+
+    if (!targetId) {
+      console.error('No valid ID found for update');
+      Alert.alert('Error', 'Cannot update item: No valid ID found');
+      return;
+    }
+
     const updatedProductDetails = productDetails.map(detail => {
-      if (
-        detail._id === updatedProductDetail._id ||
-        detail.id === updatedProductDetail.id
-      ) {
+      const detailId = detail._id || detail.id;
+
+      if (detailId === targetId) {
+        console.log(`Updating item with ID: ${detailId}`);
         return {
           ...detail,
-          name: updatedProductDetail.productDetailName,
+          name:
+            updatedProductDetail.productDetailName || updatedProductDetail.name,
           price: updatedProductDetail.price,
           time: updatedProductDetail.time,
           description: updatedProductDetail.description,
@@ -301,6 +414,16 @@ const SubMarketplaceScreen = () => {
       }
       return detail;
     });
+
+    console.log(
+      'Product details after update:',
+      updatedProductDetails.map(detail => ({
+        id: detail.id,
+        _id: detail._id,
+        name: detail.name || detail.productDetailName,
+      })),
+    );
+
     saveProductDetailsToBackend(updatedProductDetails);
   };
 

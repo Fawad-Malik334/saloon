@@ -3,7 +3,7 @@ import axios from 'axios';
 import { BASE_URL } from './config';
 
 // Base URL for service-related endpoints
-const SERVICE_API_URL = `${BASE_URL}/services`; // Mounted at /api/services on backend
+const SERVICE_API_URL = `${BASE_URL}/services`;
 
 // Helper function to handle API errors
 const handleApiError = (error, operation = 'API call') => {
@@ -11,7 +11,6 @@ const handleApiError = (error, operation = 'API call') => {
     `Error during ${operation}:`,
     error.response?.data || error.message,
   );
-  // Re-throw the error so the calling component can catch it and show appropriate messages
   throw (
     error.response?.data?.message ||
     error.message ||
@@ -19,34 +18,62 @@ const handleApiError = (error, operation = 'API call') => {
   );
 };
 
+// Helper function to process service data for backend compatibility
+const processServiceData = data => {
+  const processed = { ...data };
+
+  // Ensure title field is present (backend expects 'title')
+  if (processed.serviceName && !processed.title) {
+    processed.title = processed.serviceName;
+  }
+  if (processed.name && !processed.title) {
+    processed.title = processed.name;
+  }
+
+  // Process sub-services to match backend expectations
+  if (Array.isArray(processed.subServices)) {
+    const processedSubServices = processed.subServices.map(sub => ({
+      name: sub.name || sub.subServiceName, // Backend expects 'name'
+      price: parseFloat(sub.price) || 0, // Convert to number
+      time: sub.time,
+      description: sub.description,
+      image: sub.image || sub.subServiceImage, // Backend expects 'image'
+    }));
+    processed.subServices = JSON.stringify(processedSubServices);
+  }
+
+  console.log('Processed service data:', processed);
+  return processed;
+};
+
 /**
- * Nayi service add karne ke liye. (Admin Panel)
- * Backend expects multipart/form-data at '/api/services/admin/add' for adding.
- * @param {object | FormData} serviceData - Service ki details. Can be plain object or FormData.
- * @param {string} token - Admin ka JWT token.
- * @returns {Promise<object>} - Add ki gayi service ka data.
+ * Add new service
  */
 export const addService = async (serviceData, token) => {
   try {
+    console.log('addService called with:', serviceData);
+
     const config = {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     };
+
+    let processedData = serviceData;
+
     if (serviceData instanceof FormData) {
-      // Explicitly set multipart for React Native
       config.headers['Content-Type'] = 'multipart/form-data';
       config.transformRequest = formData => formData;
+    } else {
+      processedData = processServiceData(serviceData);
     }
 
-    // Agar serviceData FormData instance hai, toh content-type ko automatically set kiya jayega axios dwara.
-    // Aur endpoint '/admin/add' use hoga, jaisa ki aapke code mein tha.
     const url =
       serviceData instanceof FormData
         ? `${SERVICE_API_URL}/admin/add`
         : SERVICE_API_URL;
 
-    const response = await axios.post(url, serviceData, config);
+    const response = await axios.post(url, processedData, config);
     return response.data;
   } catch (error) {
     handleApiError(error, 'add service');
@@ -54,8 +81,7 @@ export const addService = async (serviceData, token) => {
 };
 
 /**
- * Saari services fetch karne ke liye. (Admin aur Manager Panel dono)
- * @returns {Promise<Array<object>>} - Services ki list.
+ * Get all services
  */
 export const getServices = async () => {
   try {
@@ -67,9 +93,7 @@ export const getServices = async () => {
 };
 
 /**
- * ID se service fetch karne ke liye. (Agar zaroorat ho toh)
- * @param {string} id - Service ki ID.
- * @returns {Promise<object>} - Service ka data.
+ * Get service by ID
  */
 export const getServiceById = async id => {
   try {
@@ -81,39 +105,30 @@ export const getServiceById = async id => {
 };
 
 /**
- * Service ko update karne ke liye. (Admin Panel)
- * @param {string} id - Service ki ID.
- * @param {object} updatedData - Updated service details.
- * @param {string} token - Admin ka JWT token.
- * @returns {Promise<object>} - Updated service ka data.
+ * Update service
  */
 export const updateService = async (id, updatedData, token) => {
   try {
+    console.log('updateService called with:', { id, updatedData });
+
     const config = {
       headers: {
-        Authorization: `Bearer ${token}`, // Admin token required for updating
+        Authorization: `Bearer ${token}`,
       },
     };
+
+    let processedData = updatedData;
+
     if (updatedData instanceof FormData) {
       config.headers['Content-Type'] = 'multipart/form-data';
       config.transformRequest = formData => formData;
+    } else {
+      processedData = processServiceData(updatedData);
     }
-    // For non-FormData payloads, align fields with backend expectations
-    const payload =
-      updatedData instanceof FormData
-        ? updatedData
-        : (() => {
-            const body = { ...updatedData };
-            if (!body.name && body.serviceName) body.name = body.serviceName;
-            if (Array.isArray(body.subServices)) {
-              body.subServices = JSON.stringify(body.subServices);
-            }
-            return body;
-          })();
 
     const response = await axios.put(
       `${SERVICE_API_URL}/admin/${id}`,
-      payload,
+      processedData,
       config,
     );
     return response.data;
@@ -123,16 +138,13 @@ export const updateService = async (id, updatedData, token) => {
 };
 
 /**
- * Service ko delete karne ke liye. (Admin Panel)
- * @param {string} id - Service ki ID.
- * @param {string} token - Admin ka JWT token.
- * @returns {Promise<object>} - Confirmation message.
+ * Delete service
  */
 export const deleteService = async (id, token) => {
   try {
     const config = {
       headers: {
-        Authorization: `Bearer ${token}`, // Admin token required for deleting
+        Authorization: `Bearer ${token}`,
       },
     };
     const response = await axios.delete(

@@ -81,7 +81,7 @@ const ServiceCard = ({ service, onOptionsPress, onPress }) => {
         style={styles.serviceImage}
         resizeMode="cover"
       />
-      <Text style={styles.serviceName}>{service.name || service.title}</Text>
+      <Text style={styles.serviceName}>{service.title || service.name}</Text>
       {service.isHiddenFromEmployee && (
         <View style={styles.hiddenBadge}>
           <Text style={styles.hiddenBadgeText}>Hidden</Text>
@@ -151,18 +151,27 @@ const ServicesScreen = () => {
   // Function to handle saving a new service or updating an existing one
   const handleSaveService = async serviceData => {
     try {
+      console.log('Saving service data:', serviceData);
+
       if (serviceToEdit) {
         // It's an edit operation - use the id from the mapped data
+        console.log('Editing service with ID:', serviceToEdit.id);
         await updateService(serviceToEdit.id, serviceData, authToken);
         Alert.alert('Success', 'Service updated successfully!');
       } else {
         // It's an add operation
+        console.log('Adding new service');
         await addService(serviceData, authToken);
         Alert.alert('Success', 'Service added successfully!');
       }
       fetchServices(); // Refresh the services list
     } catch (e) {
       console.error('Error saving service:', e);
+      console.error('Error details:', {
+        message: e.message,
+        response: e.response?.data,
+        status: e.response?.status,
+      });
       Alert.alert('Error', e.message || 'Failed to save the service.');
     }
     setAddEditModalVisible(false);
@@ -206,19 +215,26 @@ const ServicesScreen = () => {
         // Map the backend data structure to match what AddServiceModal expects
         const mappedServiceData = {
           id: selectedService._id,
-          serviceName: selectedService.name || selectedService.title,
+          serviceName: selectedService.title || selectedService.name, // Backend returns 'title'
           serviceImage: selectedService.image,
           subServices: selectedService.subServices
-            ? selectedService.subServices.map(sub => ({
-                subServiceName: sub.name || sub.subServiceName,
+            ? selectedService.subServices.map((sub, index) => ({
+                id:
+                  sub._id ||
+                  sub.id ||
+                  `sub_${Date.now()}_${Math.random()
+                    .toString(36)
+                    .substring(2, 15)}_${index}`, // Ensure unique ID with index
+                name: sub.name || sub.subServiceName, // Use 'name' for backend compatibility
                 price: sub.price,
                 time: sub.time,
                 description: sub.description,
-                subServiceImage: sub.image,
+                image: sub.image || sub.subServiceImage, // Use 'image' for backend compatibility
               }))
             : [],
           isHiddenFromEmployee: selectedService.isHiddenFromEmployee || false,
         };
+        console.log('Mapped service data for editing:', mappedServiceData);
         setServiceToEdit(mappedServiceData);
         setAddEditModalVisible(true);
         break;

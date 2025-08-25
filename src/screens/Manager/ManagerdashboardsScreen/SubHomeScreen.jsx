@@ -10,13 +10,13 @@ import {
   TextInput,
   PixelRatio,
   Alert, // Alert import for error handling
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useUser } from '../../../context/UserContext';
 import Sidebar from '../../../components/ManagerSidebar';
 import { useNavigation, useRoute } from '@react-navigation/native';
-// Firestore imports
-// Removed Firestore; we'll use passed data or backend fetch
+// Import centralized API functions
 import { getServiceById } from '../../../api';
 
 import userProfileImage from '../../../assets/images/cut.jpeg';
@@ -131,25 +131,30 @@ const SubHome = () => {
   const { userName, isLoading } = useUser();
   const [subServices, setSubServices] = useState([]);
   const [fetchLoading, setFetchLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (service && Array.isArray(service.subServices)) {
       setSubServices(service.subServices);
       setFetchLoading(false);
+      setError(null);
       return;
     }
     const fetchById = async () => {
       try {
         if (!service || !service.id) {
           setFetchLoading(false);
+          setError('No service selected');
           return;
         }
         const data = await getServiceById(service.id);
         const list = data?.service?.subServices || data?.subServices || [];
         setSubServices(list);
+        setError(null);
       } catch (e) {
+        console.error('Error fetching sub-services:', e);
         setSubServices([]);
-        Alert.alert('Error', 'Failed to fetch sub-services.');
+        setError('Failed to fetch sub-services. Please try again.');
       } finally {
         setFetchLoading(false);
       }
@@ -164,7 +169,39 @@ const SubHome = () => {
   if (isLoading || fetchLoading) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#A99226" />
         <Text style={styles.loadingText}>Loading sub-services...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => {
+            setFetchLoading(true);
+            setError(null);
+            // Re-fetch the data
+            if (service && service.id) {
+              getServiceById(service.id)
+                .then(data => {
+                  const list =
+                    data?.service?.subServices || data?.subServices || [];
+                  setSubServices(list);
+                  setFetchLoading(false);
+                })
+                .catch(e => {
+                  setError('Failed to fetch sub-services. Please try again.');
+                  setFetchLoading(false);
+                });
+            }
+          }}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -225,7 +262,7 @@ const SubHome = () => {
               ))
             ) : (
               <Text style={styles.noSubServicesText}>
-                No sub-services available for this product.
+                No sub-services available for this service.
               </Text>
             )}
           </View>
@@ -250,6 +287,24 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#fff',
     fontSize: normalize(20),
+    marginTop: normalize(10),
+  },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: normalize(18),
+    textAlign: 'center',
+    marginBottom: normalize(20),
+  },
+  retryButton: {
+    backgroundColor: '#A99226',
+    paddingVertical: normalize(12),
+    paddingHorizontal: normalize(24),
+    borderRadius: normalize(8),
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: normalize(16),
+    fontWeight: '600',
   },
   mainContent: {
     flex: 1,

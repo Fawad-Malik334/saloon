@@ -94,27 +94,49 @@ const initialStaticDealsData = [
 ];
 
 const DealCard = ({ deal, onOptionsPress, onPress, onAddToCartPress }) => {
+  // Get image source with proper fallback logic
   let imageSource = null;
 
-  // Handle image source for both backend and frontend data
-  if (deal.image || deal.dealImage) {
+  // First try to get the actual image from deal
+  if (deal?.image || deal?.dealImage) {
     const imageUri = deal.image || deal.dealImage;
-    if (typeof imageUri === 'string' && imageUri.length > 0) {
-      // For backend images (URLs)
+
+    // If image is a valid HTTP/HTTPS URL, return it
+    if (
+      typeof imageUri === 'string' &&
+      (imageUri.startsWith('http://') || imageUri.startsWith('https://'))
+    ) {
+      console.log('Using HTTP image:', imageUri);
       imageSource = { uri: imageUri };
-    } else if (typeof imageUri === 'number') {
-      // For local assets
+    }
+    // If image is a local file path (starts with file://)
+    else if (typeof imageUri === 'string' && imageUri.startsWith('file://')) {
+      console.log('Using local file image:', imageUri);
+      imageSource = { uri: imageUri };
+    }
+    // If image is a number (local asset), return it directly
+    else if (typeof imageUri === 'number') {
+      console.log('Using local asset image:', imageUri);
       imageSource = imageUri;
+    }
+    // If image is null, undefined, or empty string, return null
+    else if (!imageUri || imageUri === '') {
+      console.log('No image provided, returning null');
+      imageSource = null;
+    }
+    // For any other case, log and return null
+    else {
+      console.log('Unknown image format:', imageUri, 'returning null');
+      imageSource = null;
     }
   }
 
-  console.log('Admin DealCard image source:', {
-    dealName: deal.name || deal.dealName,
-    image: deal.image,
-    dealImage: deal.dealImage,
-    imageSource: imageSource,
-    imageType: typeof (deal.image || deal.dealImage),
-  });
+  console.log(
+    'Admin DealCard image source for',
+    deal?.name || deal?.dealName,
+    ':',
+    imageSource,
+  );
 
   return (
     <TouchableOpacity style={styles.dealCard} onPress={() => onPress(deal)}>
@@ -410,18 +432,22 @@ const DealsScreen = () => {
 
   // 'Add to Cart' function ko update karein
   const handleAddToCart = deal => {
+    // Check if deal is already in cart using proper ID comparison
     const isAlreadyAdded = cartItems.some(
-      item => item.id === deal._id || item.id === deal.id,
+      item =>
+        (item.id === deal._id || item.id === deal.id) &&
+        item.dealName === (deal.name || deal.dealName),
     );
+
     if (isAlreadyAdded) {
       Alert.alert(
         'Already Added',
         `${deal.name || deal.dealName} is already in the cart.`,
       );
-      // Agar pehle se maujood hai to sirf navigate karein
+      // Navigate to cart with current items
       navigation.navigate('CartDealsScreen', { cartItems });
     } else {
-      // Nayi deal add karke navigate karein
+      // Create a unique deal object for cart
       const dealToAdd = {
         id: deal._id || deal.id,
         dealName: deal.name || deal.dealName,
@@ -429,17 +455,27 @@ const DealsScreen = () => {
         price: deal.price,
         description: deal.description,
       };
+
+      // Add to cart and navigate
       const updatedCart = [...cartItems, dealToAdd];
       setCartItems(updatedCart); // DealsScreen mein cart ka state update karein
+
       Alert.alert(
         'Added to Cart',
         `${deal.name || deal.dealName} has been added.`,
       );
+
+      // Navigate with updated cart
       navigation.navigate('CartDealsScreen', { cartItems: updatedCart });
     }
   };
 
   const confirmDeleteDeal = async () => {
+    console.log('=== Deleting deal ===');
+    console.log('Deal to delete:', dealToDelete);
+
+    const dealName = dealToDelete?.name || dealToDelete?.dealName || 'Unknown';
+
     // if (!dealToDelete || !authToken) { // temporarily removed for testing
     //   showCustomAlert(
     //     'Invalid deal selected for deletion or authentication required.',
@@ -453,6 +489,14 @@ const DealsScreen = () => {
     try {
       // Use the correct ID field
       const dealId = dealToDelete._id || dealToDelete.id;
+
+      if (!dealId) {
+        console.error('No valid ID found for deletion');
+        showCustomAlert('Cannot delete deal: No valid ID found');
+        return;
+      }
+
+      console.log('Deleting deal with ID:', dealId);
       await deleteDeal(dealId, authToken);
       showCustomAlert('Deal deleted successfully!');
 
@@ -463,7 +507,26 @@ const DealsScreen = () => {
       setConfirmModalVisible(false);
     } catch (error) {
       console.error('Error deleting deal:', error);
-      showCustomAlert(`Failed to delete deal: ${error.message}`);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response,
+        status: error.status,
+        data: error.data,
+      });
+
+      // Show more specific error message
+      let errorMessage = 'Failed to delete deal';
+      if (error.message) {
+        if (error.message.includes('Deal not found')) {
+          errorMessage = 'Deal not found. Please refresh and try again.';
+        } else if (error.message.includes('Authentication')) {
+          errorMessage = 'Authentication required. Please login again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      showCustomAlert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -510,6 +573,7 @@ const DealsScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.mainContent}>
+        {/* Header Section */}
         <View style={styles.header}>
           <View style={styles.headerCenter}>
             <View style={styles.userInfo}>
@@ -535,14 +599,14 @@ const DealsScreen = () => {
             <TouchableOpacity style={styles.notificationButton}>
               <MaterialCommunityIcons
                 name="bell-outline"
-                size={width * 0.041}
+                size={width * 0.037}
                 color="#fff"
               />
             </TouchableOpacity>
             <TouchableOpacity style={styles.notificationButton}>
               <MaterialCommunityIcons
                 name="alarm"
-                size={width * 0.041}
+                size={width * 0.037}
                 color="#fff"
               />
             </TouchableOpacity>
@@ -673,73 +737,80 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: width * 0.02,
+    justifyContent: 'flex-start',
+    marginLeft: width * 0.0001,
+    marginRight: width * 0.0001,
   },
   userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: width * 0.01,
+    marginRight: width * 0.16,
   },
   greeting: {
-    color: '#fff',
-    fontSize: width * 0.025,
-    fontWeight: '600',
+    fontSize: width * 0.019,
+    color: '#A9A9A9',
   },
   userName: {
-    color: '#A99226',
-    fontSize: width * 0.025,
+    fontSize: width * 0.03,
     fontWeight: 'bold',
+    color: '#fff',
   },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3C3C3C',
-    borderRadius: 8,
-    paddingHorizontal: width * 0.02,
-    paddingVertical: height * 0.01,
+    backgroundColor: '#2A2D32',
+    borderRadius: 10,
+    paddingHorizontal: width * 0.0003,
     flex: 1,
-    marginLeft: width * 0.05,
-    marginRight: width * 0.05,
+    height: height * 0.035,
+    borderWidth: 1,
+    borderColor: '#4A4A4A',
+  },
+  searchIcon: {
+    marginRight: width * 0.01,
   },
   searchInput: {
     flex: 1,
     color: '#fff',
-    fontSize: width * 0.02,
-    paddingVertical: height * 0.005,
+    fontSize: width * 0.021,
   },
-  searchIcon: {
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginLeft: width * 0.01,
   },
   notificationButton: {
-    padding: width * 0.01,
+    backgroundColor: '#2A2D32',
+    borderRadius: 8,
+    padding: width * 0.000001,
+    marginRight: width * 0.015,
+    height: width * 0.058,
+    width: width * 0.058,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileImage: {
-    width: width * 0.08,
-    height: width * 0.08,
-    borderRadius: (width * 0.08) / 2,
-    borderWidth: 2,
-    borderColor: '#A99226',
+    width: width * 0.058,
+    height: width * 0.058,
+    borderRadius: (width * 0.058) / 2,
   },
   dealsHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: height * 0.03,
+    marginHorizontal: width * 0.01,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3C3C3C',
+    paddingBottom: height * 0.03,
   },
   dealsTitle: {
-    color: '#fff',
-    fontSize: width * 0.04,
+    fontSize: width * 0.035,
     fontWeight: 'bold',
+    color: '#fff',
   },
   addNewDealButton: {
     backgroundColor: '#A99226',
-    paddingVertical: height * 0.015,
-    paddingHorizontal: width * 0.04,
+    paddingVertical: height * 0.012,
+    paddingHorizontal: width * 0.035,
     borderRadius: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -749,7 +820,7 @@ const styles = StyleSheet.create({
   },
   addNewDealButtonText: {
     color: '#fff',
-    fontSize: width * 0.02,
+    fontSize: width * 0.018,
     fontWeight: '600',
   },
   loadingContainer: {
@@ -772,7 +843,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   dealCard: {
-    width: CARD_WIDTH,
+    width: width * 0.22,
+    height: CARD_WIDTH * 0.8 + height * 0.22,
     backgroundColor: '#3C3C3C',
     borderRadius: 12,
     marginBottom: CARD_SPACING,
@@ -786,7 +858,7 @@ const styles = StyleSheet.create({
   },
   dealImage: {
     width: '100%',
-    height: CARD_WIDTH * 0.6,
+    height: CARD_WIDTH * 0.8,
   },
   dealImageNoImage: {
     width: '100%',

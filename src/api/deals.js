@@ -1,8 +1,8 @@
 // src/api/deals.js
-import API_BASE_URL from './config';
+import { BASE_URL } from './config';
 
 // Backend mounts deals at /api/deals
-const DEALS_ENDPOINT = `${API_BASE_URL}/deals`;
+const DEALS_ENDPOINT = `${BASE_URL}/deals`;
 
 // Helper function to create FormData for deals with images
 const createDealFormData = dealData => {
