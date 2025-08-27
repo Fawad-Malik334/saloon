@@ -105,13 +105,16 @@ const CartDealsScreen = () => {
   const [clientName, setClientName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [notes, setNotes] = useState('');
+  const [beautician, setBeautician] = useState('');
+  const [gst, setGst] = useState('');
 
   const subtotal = dealsInCart.reduce(
     (sum, deal) => sum + (Number(deal.price) || 0),
     0,
   );
+  const gstAmount = parseFloat(gst) || 0;
   const discountAmount = parseFloat(discount) || 0;
-  const totalPrice = subtotal - discountAmount;
+  const totalPrice = subtotal + gstAmount - discountAmount;
 
   // Function to handle saving a new custom deal
   const handleSaveCustomDeal = newDealData => {
@@ -140,6 +143,7 @@ const CartDealsScreen = () => {
         clientName: clientName,
         phoneNumber: phoneNumber,
         notes: notes,
+        beautician: beautician,
         services: dealsInCart.map(deal => ({
           id: deal.id,
           name: deal.dealName,
@@ -147,6 +151,7 @@ const CartDealsScreen = () => {
           description: deal.description,
         })),
         subtotal: subtotal,
+        gst: gstAmount,
         discount: discountAmount,
         totalPrice: totalPrice,
       };
@@ -310,6 +315,17 @@ const CartDealsScreen = () => {
           <View style={styles.inputSection}>
             <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>GST</Text>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Add GST Amount"
+                  placeholderTextColor="#666"
+                  keyboardType="numeric"
+                  value={gst}
+                  onChangeText={setGst}
+                />
+              </View>
+              <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Discount</Text>
                 <TextInput
                   style={styles.inputField}
@@ -330,15 +346,29 @@ const CartDealsScreen = () => {
                   onChangeText={setClientName}
                 />
               </View>
+            </View>
+            <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Phone Number</Text>
                 <TextInput
                   style={styles.inputField}
-                  placeholder="Add"
+                  placeholder="Add Phone Number"
                   placeholderTextColor="#666"
                   keyboardType="phone-pad"
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
+                />
+              </View>
+            </View>
+            <View style={styles.inputRow}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Beautician</Text>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Add Beautician Name"
+                  placeholderTextColor="#666"
+                  value={beautician}
+                  onChangeText={setBeautician}
                 />
               </View>
             </View>
@@ -386,8 +416,10 @@ const CartDealsScreen = () => {
         isVisible={checkoutModalVisible}
         onClose={() => setCheckoutModalVisible(false)}
         subtotal={subtotal}
+        gst={gstAmount}
         discount={discountAmount}
         servicesCount={dealsInCart.length}
+        beautician={beautician}
         onConfirmOrder={handleOpenPrintBill}
       />
 

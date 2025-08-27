@@ -82,9 +82,9 @@ const PrintBillModal = ({ isVisible, onClose, billData }) => {
                     <td class="service-name">${
                       s.name || s.subServiceName || 'N/A'
                     }</td>
-                    <td class="service-price">PKR ${Number(s.price || 0).toFixed(
-                      2,
-                    )}</td>
+                    <td class="service-price">PKR ${Number(
+                      s.price || 0,
+                    ).toFixed(2)}</td>
                 </tr>
             `,
         )
@@ -248,6 +248,9 @@ const PrintBillModal = ({ isVisible, onClose, billData }) => {
                                 <span class="detail-label">Beautician:</span>
                                 <span class="detail-value">${beautician}</span>
                             </div>
+                            <div class="detail-row">
+                                
+                            </div>
                         </div>
 
                         <div class="section">
@@ -279,6 +282,12 @@ const PrintBillModal = ({ isVisible, onClose, billData }) => {
                                         <td class="summary-value">+PKR ${gst.toFixed(
                                           2,
                                         )}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="summary-label">Discount:</td>
+                                        <td class="summary-value">-PKR ${(
+                                          billData?.discount || 0
+                                        ).toFixed(2)}</td>
                                     </tr>
                                     <tr class="final-total-row">
                                         <td class="summary-label final-total-label">Total:</td>
@@ -425,6 +434,7 @@ const PrintBillModal = ({ isVisible, onClose, billData }) => {
               <Text style={styles.detailLabel}>Beautician:</Text>
               <Text style={styles.detailValue}>{beautician}</Text>
             </View>
+            <View style={styles.detailRow}></View>
 
             <View style={styles.separator} />
 

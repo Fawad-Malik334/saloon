@@ -93,7 +93,7 @@ const SubServiceCard = ({ subService, onAddToCartPress }) => {
         >
           {serviceTime}
         </Text>
-        <Text style={styles.cardPrice}>{`$${servicePrice}`}</Text>
+        <Text style={styles.cardPrice}>{`PKR ${servicePrice}`}</Text>
       </View>
       {/* This is the + button that navigates to Cartproduct */}
       <TouchableOpacity

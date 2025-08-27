@@ -14,9 +14,19 @@ import Animated, { FadeIn, SlideInUp, BounceIn } from 'react-native-reanimated';
 // Dimensions and Scaling for Tablet
 const { width } = Dimensions.get('window');
 const scale = width / 1280;
-const normalize = (size) => Math.round(PixelRatio.roundToNearestPixel(size * scale));
+const normalize = size =>
+  Math.round(PixelRatio.roundToNearestPixel(size * scale));
 
-const CheckoutModal = ({ isVisible, onClose, subtotal, gst, servicesCount, onConfirmOrder }) => {
+const CheckoutModal = ({
+  isVisible,
+  onClose,
+  subtotal,
+  gst,
+  discount,
+  servicesCount,
+  beautician,
+  onConfirmOrder,
+}) => {
   return (
     <Modal
       animationType="fade"
@@ -25,9 +35,9 @@ const CheckoutModal = ({ isVisible, onClose, subtotal, gst, servicesCount, onCon
       onRequestClose={onClose}
     >
       <View style={styles.centeredView}>
-        <Animated.View 
+        <Animated.View
           style={styles.modalView}
-          entering={SlideInUp.duration(600).springify()}
+          entering={FadeIn.duration(400).springify()}
         >
           <Text style={styles.modalTitle}>Confirm Order</Text>
 
@@ -49,6 +59,30 @@ const CheckoutModal = ({ isVisible, onClose, subtotal, gst, servicesCount, onCon
                 editable={false}
               />
             </View>
+            <View style={styles.modalInputContainer}>
+              <Text style={styles.inputLabel}>Discount</Text>
+              <TextInput
+                style={styles.inputField}
+                value={`PKR ${(discount || 0).toFixed(2)}`}
+                editable={false}
+              />
+            </View>
+            <View style={styles.modalInputContainer}>
+              <Text style={styles.inputLabel}>Beautician</Text>
+              <TextInput
+                style={styles.inputField}
+                value={beautician || '-'}
+                editable={false}
+              />
+            </View>
+          </View>
+
+          {/* Total Section */}
+          <View style={styles.totalSection}>
+            <Text style={styles.totalLabel}>Total Amount</Text>
+            <Text style={styles.totalAmount}>
+              PKR {(subtotal + gst - (discount || 0)).toFixed(2)}
+            </Text>
           </View>
 
           {/* Buttons */}
@@ -62,10 +96,17 @@ const CheckoutModal = ({ isVisible, onClose, subtotal, gst, servicesCount, onCon
             <TouchableOpacity
               style={[styles.modalButton, styles.addToCartButton]}
               onPress={() => {
+                console.log('🛒 Add to Cart button pressed!');
                 // Call the new prop to confirm the order and open the print bill modal
-                onConfirmOrder();
+                if (onConfirmOrder) {
+                  console.log('✅ Calling onConfirmOrder...');
+                  onConfirmOrder();
+                } else {
+                  console.log('❌ onConfirmOrder is not defined!');
+                }
                 onClose(); // Close this modal after confirming
               }}
+              activeOpacity={0.7}
             >
               <Text style={styles.addToCartButtonText}>Add to Cart</Text>
             </TouchableOpacity>
@@ -85,8 +126,8 @@ const styles = StyleSheet.create({
   },
   modalView: {
     backgroundColor: '#161719',
-    borderRadius: normalize(16),
-    padding: normalize(35),
+    borderRadius: normalize(20),
+    padding: normalize(50),
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
@@ -95,18 +136,16 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    elevation: 5,
-    width: '90%',
-    maxWidth: normalize(600),
-    maxHeight:normalize(600)
-
-
+    elevation: 10,
+    width: '95%',
+    maxWidth: normalize(700),
+    minHeight: normalize(450),
   },
   modalTitle: {
-    fontSize: normalize(36),
+    fontSize: normalize(42),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: normalize(30),
+    marginBottom: normalize(35),
   },
   infoSection: {
     width: '100%',
@@ -116,6 +155,24 @@ const styles = StyleSheet.create({
   },
   modalInputContainer: {
     marginBottom: normalize(25),
+  },
+  totalSection: {
+    width: '100%',
+    backgroundColor: '#2A2D32',
+    borderRadius: normalize(10),
+    padding: normalize(20),
+    marginVertical: normalize(20),
+    alignItems: 'center',
+  },
+  totalLabel: {
+    fontSize: normalize(24),
+    color: '#888',
+    marginBottom: normalize(10),
+  },
+  totalAmount: {
+    fontSize: normalize(36),
+    fontWeight: 'bold',
+    color: '#FFD700',
   },
   inputLabel: {
     fontSize: normalize(25),
@@ -153,12 +210,18 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    paddingVertical: normalize(12),
-    paddingHorizontal: normalize(20),
-    borderRadius: normalize(8),
+    paddingVertical: normalize(18),
+    paddingHorizontal: normalize(25),
+    borderRadius: normalize(10),
     alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: normalize(8),
-    minHeight: normalize(45),
+    minHeight: normalize(60),
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   closeButton: {
     backgroundColor: '#666666',
@@ -175,8 +238,8 @@ const styles = StyleSheet.create({
   },
   addToCartButtonText: {
     color: '#FFFFFF',
-    fontSize: normalize(16),
-    fontWeight: '600',
+    fontSize: normalize(20),
+    fontWeight: 'bold',
   },
 });
 

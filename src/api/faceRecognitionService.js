@@ -241,6 +241,32 @@ class FaceRecognitionService {
     }
   }
 
+  // Delete a specific face from collection
+  async deleteFace(faceId) {
+    try {
+      logAWS('Deleting face from collection...', { faceId });
+
+      await this.ensureCollectionExists();
+
+      const params = {
+        CollectionId: this.collectionName,
+        FaceIds: [faceId],
+      };
+
+      const result = await rekognition.deleteFaces(params).promise();
+      logAWS('Face deleted successfully', result);
+
+      return {
+        success: true,
+        deletedFaces: result.DeletedFaces,
+        deletedFaceCount: result.DeletedFaces.length,
+      };
+    } catch (error) {
+      logAWS('Error deleting face', error);
+      throw error;
+    }
+  }
+
   // Delete face collection
   async deleteFaceCollection() {
     try {
@@ -281,6 +307,30 @@ class FaceRecognitionService {
       };
     } catch (error) {
       logAWS('Error describing collection', error);
+      throw error;
+    }
+  }
+
+  // Test function to verify AWS Rekognition is working
+  async testConnection() {
+    try {
+      logAWS('Testing AWS Rekognition connection...');
+
+      // Try to list collections to test connection
+      const params = {
+        MaxResults: 10,
+      };
+
+      const result = await rekognition.listCollections(params).promise();
+      logAWS('AWS Rekognition connection test successful', result);
+
+      return {
+        success: true,
+        collections: result.CollectionIds,
+        message: 'AWS Rekognition connection successful',
+      };
+    } catch (error) {
+      logAWS('AWS Rekognition connection test failed', error);
       throw error;
     }
   }

@@ -13,8 +13,68 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import moment from 'moment';
+import axios from 'axios'; // Added axios import
+import { BASE_URL } from '../../../../../api/config';
 
 const { width, height } = Dimensions.get('window');
+
+// Function to generate sequential IDs
+const generateSequentialId = async employeeType => {
+  try {
+    // Fetch existing employees to get the next number
+    const response = await axios.get(
+      'http://192.168.18.16:5000/api/employees/all',
+    );
+
+    if (response.status === 200 && response.data.data) {
+      const managers = response.data.data.managers || [];
+      const employees = response.data.data.employees || [];
+      const allEmployees = [...managers, ...employees];
+
+      // Filter by type to get the correct sequence
+      let existingIds = [];
+
+      if (employeeType === 'Admin') {
+        existingIds = allEmployees
+          .filter(emp => emp.role === 'admin')
+          .map(emp => emp.employeeId)
+          .filter(id => id && id.startsWith('ADM'));
+      } else if (employeeType === 'Manager') {
+        existingIds = allEmployees
+          .filter(emp => emp.role === 'manager')
+          .map(emp => emp.employeeId)
+          .filter(id => id && id.startsWith('EMP'));
+      } else {
+        existingIds = allEmployees
+          .filter(emp => emp.role === 'employee')
+          .map(emp => emp.employeeId)
+          .filter(id => id && id.startsWith('EMP'));
+      }
+
+      // Extract numbers and find the highest
+      const numbers = existingIds.map(id => {
+        const match = id.match(/(\d+)$/);
+        return match ? parseInt(match[1]) : 0;
+      });
+
+      const nextNumber = Math.max(0, ...numbers) + 1;
+
+      // Generate ID based on type
+      if (employeeType === 'Admin') {
+        return `ADM${nextNumber.toString().padStart(3, '0')}`;
+      } else {
+        return `EMP${nextNumber.toString().padStart(4, '0')}`;
+      }
+    }
+
+    // Fallback if API fails
+    return employeeType === 'Admin' ? 'ADM001' : 'EMP0001';
+  } catch (error) {
+    console.error('Error generating sequential ID:', error);
+    // Fallback if API fails
+    return employeeType === 'Admin' ? 'ADM001' : 'EMP0001';
+  }
+};
 
 const AddEmployeeModal = ({ isVisible, onClose, onSave }) => {
   const navigation = useNavigation();
@@ -29,9 +89,20 @@ const AddEmployeeModal = ({ isVisible, onClose, onSave }) => {
   // Jab modal open ho to ek unique ID generate karein
   useEffect(() => {
     if (isVisible) {
-      setEmployeeId(`EMP-${Date.now()}`);
+      generateSequentialId(employeeType).then(id => {
+        setEmployeeId(id);
+      });
     }
-  }, [isVisible]);
+  }, [isVisible, employeeType]);
+
+  // Function to regenerate ID when employee type changes
+  const handleEmployeeTypeChange = type => {
+    setEmployeeType(type);
+    // Regenerate ID for the new type
+    generateSequentialId(type).then(id => {
+      setEmployeeId(id);
+    });
+  };
 
   const handleSave = () => {
     if (
@@ -49,30 +120,49 @@ const AddEmployeeModal = ({ isVisible, onClose, onSave }) => {
       return;
     }
 
-    const newEmployee = {
-      id: employeeId,
-      name: employeeName,
-      phoneNumber: phoneNumber,
-      idCardNumber: idCardNumber,
-      salary: monthlySalary,
-      joiningDate: moment().format('MMMM DD, YYYY'),
-      faceImage: null,
-      type: employeeType,
-    };
+    try {
+      // Prepare employee data for API
+      const employeeData = {
+        name: employeeName,
+        phoneNumber: phoneNumber,
+        idCardNumber: idCardNumber,
+        monthlySalary: monthlySalary,
+        role: employeeType.toLowerCase(), // All types go directly to backend
+      };
 
-    onSave(newEmployee);
+      const newEmployee = {
+        id: employeeId,
+        name: employeeName,
+        phoneNumber: phoneNumber,
+        idCardNumber: idCardNumber,
+        salary: monthlySalary,
+        joiningDate: moment().format('MMMM DD, YYYY'),
+        faceImage: null,
+        type: employeeType,
+        apiData: employeeData, // Add API data for face recognition screen
+      };
 
-    // Reset fields
-    setEmployeeId(''); // Reset ID
-    setEmployeeName('');
-    setPhoneNumber('');
-    setIdCardNumber('');
-    setMonthlySalary('');
-    setEmployeeType('Employee'); // Reset employee type to default.
+      console.log('Preparing employee for face recognition:', newEmployee);
 
-    navigation.navigate('FaceRecognitionScreen', { employee: newEmployee });
+      onSave(newEmployee);
 
-    onClose();
+      // Reset fields
+      setEmployeeId(''); // Reset ID
+      setEmployeeName('');
+      setPhoneNumber('');
+      setIdCardNumber('');
+      setMonthlySalary('');
+      setEmployeeType('Employee'); // Reset employee type to default.
+
+      onClose(); // Close modal first
+      navigation.navigate('FaceRecognitionScreen', { employee: newEmployee });
+    } catch (error) {
+      console.error('Error preparing employee data:', error);
+      Alert.alert(
+        'Error',
+        'Failed to prepare employee data. Please try again.',
+      );
+    }
   };
 
   return (
@@ -93,11 +183,6 @@ const AddEmployeeModal = ({ isVisible, onClose, onSave }) => {
                 color="#A9A9A9"
               />
             </TouchableOpacity>
-          </View>
-
-          {/* Employee ID Display Field (read-only) */}
-          <View style={[styles.input, styles.readOnlyInput]}>
-            <Text style={styles.readOnlyText}>Employee ID: {employeeId}</Text>
           </View>
 
           {/* Input Fields */}
@@ -135,22 +220,16 @@ const AddEmployeeModal = ({ isVisible, onClose, onSave }) => {
           {/* Employee Type Selection */}
           <View style={styles.typeSelectionContainer}>
             <Text style={styles.typeLabel}>Employee Type:</Text>
-            <TextInput
-              style={[styles.input, { marginBottom: height * 0.01 }]}
-              placeholder="Type"
-              placeholderTextColor="#A9A9A9"
-              value={employeeType}
-              onChangeText={setEmployeeType}
-            />
+
             <View style={styles.typeButtonsRow}>
-              {['Admin', 'Head-girl', 'Employee'].map(type => (
+              {['Admin', 'Manager', 'Employee'].map(type => (
                 <TouchableOpacity
                   key={type}
                   style={[
                     styles.typeButton,
                     employeeType === type && styles.selectedTypeButton,
                   ]}
-                  onPress={() => setEmployeeType(type)}
+                  onPress={() => handleEmployeeTypeChange(type)}
                 >
                   <Text
                     style={[

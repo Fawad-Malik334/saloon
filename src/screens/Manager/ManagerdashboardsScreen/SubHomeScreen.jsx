@@ -110,7 +110,7 @@ const SubServiceCard = ({ subService, onAddToCartPress }) => {
         >
           {serviceTime}
         </Text>
-        <Text style={styles.cardPrice}>{`$${servicePrice}`}</Text>
+        <Text style={styles.cardPrice}>{`PKR ${servicePrice}`}</Text>
       </View>
       <TouchableOpacity
         onPress={() => onAddToCartPress(subService)}

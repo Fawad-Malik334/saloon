@@ -11,15 +11,15 @@ import {
   PixelRatio,
   Alert,
 } from 'react-native';
-import Animated, { 
-  FadeInDown, 
-  FadeInUp, 
+import Animated, {
+  FadeInDown,
+  FadeInUp,
   SlideInRight,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
-  interpolate
+  interpolate,
 } from 'react-native-reanimated';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useUser } from '../../../../context/UserContext';
@@ -101,6 +101,7 @@ const CartServiceScreen = () => {
 
   // State to hold form input values
   const [gst, setGst] = useState('');
+  const [discount, setDiscount] = useState('');
   const [clientName, setClientName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [notes, setNotes] = useState('');
@@ -117,14 +118,14 @@ const CartServiceScreen = () => {
 
   // Button press animation
   const buttonScale = useSharedValue(1);
-  
+
   const animatedButtonStyle = useAnimatedStyle(() => {
     return {
       transform: [{ scale: buttonScale.value }],
     };
   });
 
-  const handleButtonPress = (onPress) => {
+  const handleButtonPress = onPress => {
     buttonScale.value = withTiming(0.95, { duration: 100 }, () => {
       buttonScale.value = withSpring(1, { damping: 10 });
     });
@@ -138,7 +139,8 @@ const CartServiceScreen = () => {
     0,
   );
   const gstAmount = parseFloat(gst) || 0;
-  const totalPrice = subtotal + gstAmount;
+  const discountAmount = parseFloat(discount) || 0;
+  const totalPrice = subtotal + gstAmount - discountAmount;
 
   // **NEW FUNCTION: Handle saving and displaying a custom service**
   const handleSaveCustomService = newServiceData => {
@@ -168,6 +170,7 @@ const CartServiceScreen = () => {
         services: services, // Pass the actual services in the cart
         subtotal: subtotal,
         gst: gstAmount,
+        discount: discountAmount,
         totalPrice: totalPrice,
       };
 
@@ -252,12 +255,12 @@ const CartServiceScreen = () => {
         userName={userName}
         activeTab="Services"
       />
-      <Animated.View 
+      <Animated.View
         style={styles.mainContent}
         entering={FadeInUp.duration(800).springify()}
       >
         {/* Header Section */}
-        <Animated.View 
+        <Animated.View
           style={styles.header}
           entering={FadeInDown.delay(200).duration(600)}
         >
@@ -301,7 +304,9 @@ const CartServiceScreen = () => {
                 <Animated.View
                   key={service.id || service._id || index}
                   style={styles.profileCard}
-                  entering={SlideInRight.delay(index * 100).duration(600).springify()}
+                  entering={SlideInRight.delay(index * 100)
+                    .duration(600)
+                    .springify()}
                 >
                   <View style={styles.profileImageWrapper}>
                     <Image
@@ -340,7 +345,7 @@ const CartServiceScreen = () => {
           </View>
 
           {/* Input Fields Section */}
-          <Animated.View 
+          <Animated.View
             style={styles.inputSection}
             entering={FadeInUp.delay(400).duration(800)}
           >
@@ -357,6 +362,17 @@ const CartServiceScreen = () => {
                 />
               </View>
               <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Discount</Text>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Add Discount"
+                  placeholderTextColor="#666"
+                  keyboardType="numeric"
+                  value={discount}
+                  onChangeText={setDiscount}
+                />
+              </View>
+              <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Name</Text>
                 <TextInput
                   style={styles.inputField}
@@ -366,11 +382,13 @@ const CartServiceScreen = () => {
                   onChangeText={setClientName}
                 />
               </View>
+            </View>
+            <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Phone Number</Text>
                 <TextInput
                   style={styles.inputField}
-                  placeholder="Add"
+                  placeholder="Add Phone Number"
                   placeholderTextColor="#666"
                   keyboardType="phone-pad"
                   value={phoneNumber}
@@ -415,7 +433,7 @@ const CartServiceScreen = () => {
         </ScrollView>
 
         {/* Checkout Footer Section */}
-        <Animated.View 
+        <Animated.View
           style={styles.checkoutFooter}
           entering={FadeInUp.delay(600).duration(600)}
         >
@@ -442,6 +460,7 @@ const CartServiceScreen = () => {
         onClose={() => setCheckoutModalVisible(false)}
         subtotal={subtotal}
         gst={gstAmount}
+        discount={discountAmount}
         servicesCount={services.length}
         onConfirmOrder={handleOpenPrintBill}
       />
@@ -613,18 +632,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inputLabel: {
-    fontSize: normalize(33),
+    fontSize: normalize(38),
     color: '#faf9f6ff',
     marginBottom: normalize(16),
+    fontWeight: '600',
   },
   inputField: {
     backgroundColor: '#424449ff',
     borderRadius: normalize(8),
     paddingHorizontal: normalize(19),
-    paddingVertical: normalize(10),
-    height: normalize(75),
+    paddingVertical: normalize(15),
+    height: normalize(80),
     color: '#fff',
-    fontSize: normalize(28),
+    fontSize: normalize(32),
   },
   notesContainer: {
     marginBottom: normalize(50),
@@ -659,8 +679,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2D32',
     borderRadius: normalize(10),
     paddingHorizontal: normalize(20),
-    paddingVertical: normalize(15),
+    paddingVertical: normalize(20),
     marginTop: 'auto',
+    marginBottom: normalize(50),
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   totalInfo: {
     flexDirection: 'column',

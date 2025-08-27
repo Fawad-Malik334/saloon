@@ -11,6 +11,16 @@ import {
   PixelRatio,
   Alert, // Import Alert for user feedback
 } from 'react-native';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  SlideInRight,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useUser } from '../../../../context/UserContext';
 import Sidebar from '../../../../components/ManagerSidebar';
@@ -84,6 +94,7 @@ const Cartproduct = () => {
   const [billData, setBillData] = useState(null);
 
   // State to hold form input values
+  const [gst, setGst] = useState('');
   const [discount, setDiscount] = useState('');
   const [clientName, setClientName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -150,8 +161,9 @@ const Cartproduct = () => {
     (sum, service) => sum + (Number(service.price) || 0),
     0,
   );
+  const gstAmount = parseFloat(gst) || 0;
   const discountAmount = parseFloat(discount) || 0;
-  const totalPrice = subtotal - discountAmount;
+  const totalPrice = subtotal + gstAmount - discountAmount;
 
   // Function to handle the transition to the print bill modal
   const handleOpenPrintBill = () => {
@@ -162,6 +174,7 @@ const Cartproduct = () => {
       notes: notes,
       services: services, // Pass the actual services in the cart
       subtotal: subtotal,
+      gst: gstAmount,
       discount: discountAmount,
       totalPrice: totalPrice,
     };
@@ -219,9 +232,15 @@ const Cartproduct = () => {
         userName={userName}
         activeTab="Services"
       />
-      <View style={styles.mainContent}>
+      <Animated.View
+        style={styles.mainContent}
+        entering={FadeInUp.duration(800).springify()}
+      >
         {/* Header Section */}
-        <View style={styles.header}>
+        <Animated.View
+          style={styles.header}
+          entering={FadeInDown.duration(600).springify()}
+        >
           <View style={styles.userInfoContainer}>
             <Text style={styles.greeting}>Hello 👋</Text>
             <Text style={styles.userName}>Manager</Text>
@@ -251,10 +270,13 @@ const Cartproduct = () => {
             style={styles.profileImage}
             resizeMode="cover"
           />
-        </View>
+        </Animated.View>
 
         {/* Main Cart Content with ScrollView */}
-        <ScrollView style={styles.contentArea}>
+        <Animated.ScrollView
+          style={styles.contentArea}
+          entering={FadeInUp.delay(200).duration(800)}
+        >
           {/* Profile Cards Row */}
           <View style={styles.profileCardsRow}>
             {services.length > 0 ? (
@@ -309,8 +331,22 @@ const Cartproduct = () => {
           </View>
 
           {/* Input Fields Section */}
-          <View style={styles.inputSection}>
+          <Animated.View
+            style={styles.inputSection}
+            entering={FadeInUp.delay(400).duration(800)}
+          >
             <View style={styles.inputRow}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>GST</Text>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Add GST Amount"
+                  placeholderTextColor="#666"
+                  keyboardType="numeric"
+                  value={gst}
+                  onChangeText={setGst}
+                />
+              </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Discount</Text>
                 <TextInput
@@ -332,11 +368,13 @@ const Cartproduct = () => {
                   onChangeText={setClientName}
                 />
               </View>
+            </View>
+            <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Phone Number</Text>
                 <TextInput
                   style={styles.inputField}
-                  placeholder="Add"
+                  placeholder="Add Phone Number"
                   placeholderTextColor="#666"
                   keyboardType="phone-pad"
                   value={phoneNumber}
@@ -356,7 +394,7 @@ const Cartproduct = () => {
                 onChangeText={setNotes}
               />
             </View>
-          </View>
+          </Animated.View>
 
           <TouchableOpacity
             style={styles.addCustomServiceButton}
@@ -366,10 +404,13 @@ const Cartproduct = () => {
               + Add Custom Service
             </Text>
           </TouchableOpacity>
-        </ScrollView>
+        </Animated.ScrollView>
 
         {/* Checkout Footer Section */}
-        <View style={styles.checkoutFooter}>
+        <Animated.View
+          style={styles.checkoutFooter}
+          entering={FadeInUp.delay(600).duration(600)}
+        >
           <View style={styles.totalInfo}>
             <Text style={styles.totalLabel}>
               Total ({services.length} Services)
@@ -382,14 +423,15 @@ const Cartproduct = () => {
           >
             <Text style={styles.checkoutButtonText}>Checkout</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
 
       {/* Modals */}
       <CheckoutModal
         isVisible={checkoutModalVisible}
         onClose={() => setCheckoutModalVisible(false)}
         subtotal={subtotal}
+        gst={gstAmount}
         discount={discountAmount}
         servicesCount={services.length}
         onConfirmOrder={handleOpenPrintBill}
@@ -565,18 +607,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inputLabel: {
-    fontSize: normalize(33),
+    fontSize: normalize(38),
     color: '#faf9f6ff',
     marginBottom: normalize(16),
+    fontWeight: '600',
   },
   inputField: {
     backgroundColor: '#424449ff',
     borderRadius: normalize(8),
     paddingHorizontal: normalize(19),
-    paddingVertical: normalize(10),
-    height: normalize(75),
+    paddingVertical: normalize(15),
+    height: normalize(80),
     color: '#fff',
-    fontSize: normalize(28),
+    fontSize: normalize(32),
   },
   notesContainer: {
     marginBottom: normalize(50),
@@ -608,8 +651,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2D32',
     borderRadius: normalize(10),
     paddingHorizontal: normalize(20),
-    paddingVertical: normalize(15),
+    paddingVertical: normalize(20),
     marginTop: 'auto',
+    marginBottom: normalize(50),
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   totalInfo: {
     flexDirection: 'column',

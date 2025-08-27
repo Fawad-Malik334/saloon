@@ -170,6 +170,23 @@ export const useFaceRecognition = () => {
     }
   }, []);
 
+  // Test AWS Rekognition connection
+  const testConnection = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await faceRecognitionService.testConnection();
+      setLastResult(result);
+      return result;
+    } catch (err) {
+      setError(err.message || 'Failed to test AWS connection');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Complete authentication flow
   const authenticateEmployee = useCallback(
     async (imagePath, threshold = 90) => {
@@ -227,6 +244,7 @@ export const useFaceRecognition = () => {
     listRegisteredFaces,
     deleteEmployeeFace,
     getCollectionInfo,
+    testConnection,
 
     // Convenience functions
     authenticateEmployee,

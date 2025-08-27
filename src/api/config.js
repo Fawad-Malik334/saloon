@@ -13,7 +13,7 @@ try {
 
 // For physical device testing, force your PC LAN IP.
 // Update this if your IP changes.
-const LOCAL_DEV_HOST = '192.168.18.16';
+const LOCAL_DEV_HOST = '192.168.18.16'; // Your actual PC IP address
 
 // You can override this by replacing LOCAL_DEV_HOST with your machine IP if testing on a physical device
 // Example: const LOCAL_DEV_HOST = '192.168.1.100';

@@ -39,6 +39,8 @@ const AdminLoginScreen = ({ navigation }) => {
 
     try {
       setLoading(true);
+      console.log('🔍 Attempting login with email:', email);
+      console.log('🔍 Login URL:', 'http://192.168.18.16:5000/admin/login');
 
       // 👇 API call with Axios
       const response = await axios.post(
@@ -49,16 +51,19 @@ const AdminLoginScreen = ({ navigation }) => {
         },
       );
 
-      console.log('Login Response:', response.data);
+      console.log('✅ Login Response Status:', response.status);
+      console.log('✅ Login Response Data:', response.data);
 
       if (response.status === 200) {
         const { token, admin } = response.data;
 
         // Save token to AsyncStorage
         await AsyncStorage.setItem('authToken', token);
+        console.log('✅ Token saved to AsyncStorage');
 
         // Also use UserContext to handle login and save data
         await loginUser(email, password);
+        console.log('✅ UserContext login completed');
 
         Alert.alert(
           'Login Successful',
@@ -67,6 +72,7 @@ const AdminLoginScreen = ({ navigation }) => {
             {
               text: 'OK',
               onPress: () => {
+                console.log('✅ Navigating to AdminMainDashboard');
                 navigation.replace('AdminMainDashboard');
               },
             },
@@ -74,7 +80,12 @@ const AdminLoginScreen = ({ navigation }) => {
         );
       }
     } catch (error) {
-      console.error('Login Error:', error.response?.data || error.message);
+      console.error('❌ Login Error Details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: error.config,
+      });
       Alert.alert(
         'Login Failed',
         error.response?.data?.message ||

@@ -196,16 +196,17 @@ const DealCard = ({ deal, onAddToCartPress }) => {
           )}
           <Text style={styles.dealPriceLabel}>
             Price:{' '}
-            <Text style={styles.dealPriceValue}>${deal.price || 'N/A'}</Text>
+            <Text style={styles.dealPriceValue}>PKR {deal.price || 'N/A'}</Text>
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.addToCartButton}
-          onPress={() => onAddToCartPress(deal)}
-        >
-          <Text style={styles.addToCartButtonText}>Add To Cart</Text>
-        </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={styles.addToCartButton}
+        onPress={() => onAddToCartPress(deal)}
+      >
+        <Text style={styles.addToCartButtonText}>Add To Cart</Text>
+      </TouchableOpacity>
 
       {deal.isHiddenFromEmployee && (
         <View style={styles.hiddenBadge}>
@@ -550,7 +551,6 @@ const styles = StyleSheet.create({
   },
   dealCard: {
     width: width * 0.22,
-    height: CARD_WIDTH * 0.8 + height * 0.22,
     backgroundColor: '#3C3C3C',
     borderRadius: 12,
     marginBottom: CARD_SPACING,
@@ -561,6 +561,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     position: 'relative',
+    flexDirection: 'column',
   },
   dealImage: {
     width: '100%',
@@ -580,6 +581,7 @@ const styles = StyleSheet.create({
   },
   dealInfo: {
     padding: width * 0.02,
+    flex: 1,
   },
   dealName: {
     color: '#fff',
@@ -608,7 +610,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: width * 0.02,
     borderRadius: 6,
     alignItems: 'center',
-    marginTop: height * 0.01,
+    marginTop: 'auto',
+    marginHorizontal: width * 0.02,
+    marginBottom: width * 0.02,
   },
   addToCartButtonText: {
     color: '#fff',

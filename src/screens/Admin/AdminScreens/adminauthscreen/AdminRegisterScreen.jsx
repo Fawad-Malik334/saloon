@@ -62,6 +62,12 @@ const AdminRegisterScreen = ({ navigation }) => {
 
     try {
       setLoading(true);
+      console.log('🔍 Attempting admin registration...');
+      console.log(
+        '🔍 Registration URL:',
+        'http://192.168.18.16:5000/admin/add',
+      );
+      console.log('🔍 Registration data:', { name, email, phoneNumber });
 
       // API Call
       const response = await axios.post('http://192.168.18.16:5000/admin/add', {
@@ -72,11 +78,13 @@ const AdminRegisterScreen = ({ navigation }) => {
         phoneNumber,
       });
 
-      console.log('API Response:', response.data);
+      console.log('✅ Registration Response Status:', response.status);
+      console.log('✅ Registration Response Data:', response.data);
 
       if (response.status === 201) {
         // Also save user data to AsyncStorage using UserContext
         await registerUser(name, email, password, phoneNumber);
+        console.log('✅ UserContext registration completed');
 
         Alert.alert(
           'Registration Successful!',
@@ -85,21 +93,26 @@ const AdminRegisterScreen = ({ navigation }) => {
           [
             {
               text: 'OK',
-              onPress: () => navigation.replace('AdminLogin'),
+              onPress: () => {
+                console.log('✅ Navigating to AdminLogin');
+                navigation.replace('AdminLogin');
+              },
             },
           ],
         );
       }
     } catch (error) {
-      console.error(
-        'Registration failed:',
-        error.response?.data || error.message,
-      );
+      console.error('❌ Registration Error Details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: error.config,
+      });
       Alert.alert(
         'Error',
         error.response?.data?.message ||
           error.message ||
-          'Failed to register. Please try again.',
+          'Registration failed. Please try again.',
       );
     } finally {
       setLoading(false);
