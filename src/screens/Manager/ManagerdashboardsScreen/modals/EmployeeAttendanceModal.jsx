@@ -14,9 +14,8 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import DatePicker from 'react-native-date-picker';
 import moment from 'moment';
-import axios from 'axios';
+import { employeeCheckIn, employeeCheckOut } from '../../../../api/attendanceService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BASE_URL } from '../../../../api/config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -116,8 +115,6 @@ const EmployeeAttendanceModal = ({ route, navigation }) => {
         });
       }
 
-      const apiUrl = `${BASE_URL}/attendance/${attendanceApiType}`;
-      console.log('📤 [API] Sending request to:', apiUrl);
       console.log('📤 [API] Employee data being sent:', {
         employeeId: employee.employeeId || employee._id,
         hasEmployeeId: !!employee.employeeId,
@@ -126,65 +123,24 @@ const EmployeeAttendanceModal = ({ route, navigation }) => {
         employeeRole: employee.role,
       });
 
-      // Test network connectivity first
-      console.log('🌐 [Network Test] Testing connection to server...');
-      console.log('🌐 [Network Test] Base URL:', BASE_URL);
-
-      try {
-        const testUrl = `${BASE_URL}/employees/all`;
-        console.log('🌐 [Network Test] Testing URL:', testUrl);
-
-        const testResponse = await axios.get(testUrl, {
-          headers: {
-            'ngrok-skip-browser-warning': 'true',
-            Accept: 'application/json',
-          },
-          timeout: 5000,
-        });
-        console.log(
-          '✅ [Network Test] Server is reachable:',
-          testResponse.status,
-        );
-      } catch (testError) {
-        console.log(
-          '❌ [Network Test] Server connectivity issue:',
-          testError.message,
-        );
-        console.log('❌ [Network Test] Error code:', testError.code);
-
-        // If basic connectivity fails, show specific error
-        if (
-          testError.code === 'ENETUNREACH' ||
-          testError.code === 'ECONNREFUSED'
-        ) {
-          showCustomAlert(
-            '❌ Cannot connect to server. Please check:\n\n1. Ngrok server is running\n2. Internet connection\n3. Backend server is active',
-          );
-          return;
-        }
-      }
-
       console.log('📤 [API] Final request details:', {
-        url: apiUrl,
         method: 'POST',
         hasFile: !!capturedImage,
         employeeId: employee.employeeId || employee._id,
         attendanceType: attendanceApiType,
-        tokenExists: !!token,
       });
 
-      const response = await axios.post(apiUrl, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true', // Skip ngrok browser warning
-        },
-        timeout: 30000, // Increased timeout to 30 seconds
-      });
+      // Use attendance service
+      let response;
+      if (attendanceApiType === 'checkin') {
+        response = await employeeCheckIn(employee.employeeId || employee._id, capturedImage);
+      } else {
+        response = await employeeCheckOut(employee.employeeId || employee._id, capturedImage);
+      }
 
-      console.log('✅ [API Success] Attendance response:', response.data);
+      console.log('✅ [API Success] Attendance response:', response);
 
-      if (response.status === 200 || response.status === 201) {
+      if (response && (response.success || response.message)) {
         showCustomAlert(
           `✅ ${attendanceType} successful!\n\nEmployee: ${
             employee.name

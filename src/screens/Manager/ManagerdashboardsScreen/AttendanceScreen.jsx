@@ -27,8 +27,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { BASE_URL } from '../../../api/config';
+import { getAllEmployeeAttendance } from '../../../api/attendanceService';
 
 const { width, height } = Dimensions.get('window');
 const screenWidth = Dimensions.get('window').width;
@@ -59,21 +58,12 @@ const fetchEmployeeAttendanceRecords = async () => {
       '📡 [Manager Attendance] Fetching employee attendance records...',
     );
 
-    const token = await getAuthToken();
-    const headers = token
-      ? {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        }
-      : {};
+    const response = await getAllEmployeeAttendance();
+    console.log('✅ [Manager Attendance] API Response:', response);
 
-    // Use employee attendance API, not admin attendance API
-    const response = await axios.get(`${BASE_URL}/attendance/all`, { headers });
-    console.log('✅ [Manager Attendance] API Response:', response.data);
-
-    if (response.status === 200 && Array.isArray(response.data)) {
+    if (Array.isArray(response)) {
       // Filter out admin attendance - only show employee/manager attendance
-      const employeeAttendanceOnly = response.data.filter(record => {
+      const employeeAttendanceOnly = response.filter(record => {
         // Only include records that have employeeId (not adminId)
         return record.employeeId && record.employeeName;
       });

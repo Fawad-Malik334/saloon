@@ -351,10 +351,17 @@ const ManagerFaceRecognitionScreen = ({ navigation }) => {
                   console.log('🔑 Generating proper auth token for manager...');
 
                   // Fixed endpoint: /api/manager/face-login
+                  console.log('🔍 [Token Generation] Manager data:', {
+                    _id: manager._id,
+                    managerId: manager.managerId,
+                    name: manager.name,
+                    availableFields: Object.keys(manager),
+                  });
+
                   const tokenResponse = await axios.post(
                     `${BASE_URL}/manager/face-login`,
                     {
-                      managerId: manager._id,
+                      managerId: manager._id, // Use _id directly since managerId is undefined
                       name: manager.name,
                       faceVerified: true,
                     },

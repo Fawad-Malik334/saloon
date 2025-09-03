@@ -18,8 +18,7 @@ import { useUser } from '../../../../context/UserContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { BASE_URL } from '../../../../api/config';
+import { getAllAdminAttendance } from '../../../../api/attendanceService';
 import { useFocusEffect } from '@react-navigation/native';
 
 import AddAttendanceModal from './modals/AddAttendanceModal'; // Adjust path as needed
@@ -77,35 +76,18 @@ const AttendanceScreen = () => {
       if (showLoading) setIsLoadingAttendance(true);
       console.log('📡 [AttendanceScreen] Fetching admin attendance records...');
 
-      const authStatus = await checkAuthStatus();
-      if (!authStatus || !authStatus.token) {
-        console.log(
-          '❌ [AttendanceScreen] No authentication found for API call',
-        );
-        return;
+      const response = await getAllAdminAttendance();
+
+      console.log('✅ [Admin AttendanceScreen] API Response:', response);
+      console.log('🔍 [Debug] Response data type:', typeof response);
+      console.log('🔍 [Debug] Response data length:', response?.length);
+      if (response && response.length > 0) {
+        console.log('🔍 [Debug] First record keys:', Object.keys(response[0]));
       }
 
-      // Use admin-specific attendance API
-      const response = await axios.get(`${BASE_URL}/admin/attendance/all`, {
-        headers: {
-          Authorization: `Bearer ${authStatus.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      console.log('✅ [Admin AttendanceScreen] API Response:', response.data);
-      console.log('🔍 [Debug] Response data type:', typeof response.data);
-      console.log('🔍 [Debug] Response data length:', response.data?.length);
-      if (response.data && response.data.length > 0) {
-        console.log(
-          '🔍 [Debug] First record keys:',
-          Object.keys(response.data[0]),
-        );
-      }
-
-      if (response.status === 200 && Array.isArray(response.data)) {
+      if (Array.isArray(response)) {
         // Filter to ensure only admin attendance records (not employee attendance)
-        const adminAttendanceOnly = response.data.filter(record => {
+        const adminAttendanceOnly = response.filter(record => {
           // Only include records that have adminId/adminName (not employeeId)
           return record.adminId && record.adminName;
         });

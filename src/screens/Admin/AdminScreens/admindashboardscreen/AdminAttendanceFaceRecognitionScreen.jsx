@@ -19,9 +19,8 @@ import {
   useCameraPermission,
 } from 'react-native-vision-camera';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import axios from 'axios';
+import { adminCheckIn, adminCheckOut } from '../../../../api/attendanceService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BASE_URL } from '../../../../api/config';
 import moment from 'moment';
 
 const { width, height } = Dimensions.get('window');
@@ -267,60 +266,80 @@ const AdminAttendanceFaceRecognitionScreen = ({ route }) => {
       console.log('🌐 [Network Test] Testing connectivity...');
       await testNetworkConnection(); // Just for logging, don't block on failure
 
-      const token = await getAuthToken();
+      // Get admin token directly from AsyncStorage (same as attendance service)
+      let token = null;
+      try {
+        const adminAuthData = await AsyncStorage.getItem('adminAuth');
+        console.log(
+          '🔍 [Admin Attendance] Admin auth data:',
+          adminAuthData ? 'Found' : 'Not found',
+        );
+
+        if (adminAuthData) {
+          const parsedData = JSON.parse(adminAuthData);
+          console.log('🔍 [Admin Attendance] Parsed admin auth data:', {
+            hasToken: !!parsedData.token,
+            tokenType: parsedData.token
+              ? parsedData.token.startsWith('eyJ')
+                ? 'JWT'
+                : 'Face Auth'
+              : 'None',
+            hasAdmin: !!parsedData.admin,
+            isAuthenticated: parsedData.isAuthenticated,
+          });
+
+          token = parsedData.token;
+          console.log(
+            '🔍 [Admin Attendance] Admin token found:',
+            token ? token.substring(0, 20) + '...' : 'null',
+          );
+        }
+      } catch (error) {
+        console.error(
+          '❌ [Admin Attendance] Failed to read admin token:',
+          error,
+        );
+      }
+
       if (!token) {
+        console.error(
+          '❌ [Admin Attendance] No admin authentication token found',
+        );
         showCustomAlert('Session expired. Please log in again.', () => {
           navigation.goBack();
         });
         return;
       }
 
+      console.log(
+        '✅ [Admin Attendance] Using admin token:',
+        token.substring(0, 20) + '...',
+      );
+
       const attendanceType =
         attendanceStatus === 'Check-In' ? 'checkin' : 'checkout';
-      const apiUrl = `${BASE_URL}/admin/attendance`;
 
       console.log('📡 [API] Sending admin attendance request:', {
         adminId,
         attendanceType,
-        apiUrl,
       });
 
-      // Prepare form data
-      const formData = new FormData();
-      formData.append('adminId', adminId);
-      formData.append('attendanceType', attendanceType);
-      formData.append('livePicture', {
-        uri: photoUri,
-        type: 'image/jpeg',
-        name: `admin_attendance_${Date.now()}.jpg`,
-      });
-
-      console.log('📤 [FormData] Sending request to:', apiUrl);
-      console.log('📤 [FormData] Token exists:', !!token);
-      console.log(
-        '📤 [FormData] Token preview:',
-        token ? `${token.substring(0, 20)}...` : 'null',
-      );
       console.log('📤 [FormData] AdminId:', adminId);
       console.log('📤 [FormData] AttendanceType:', attendanceType);
       console.log('📤 [FormData] Photo URI:', photoUri);
 
-      const response = await axios.post(apiUrl, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true', // Skip ngrok browser warning
-        },
-        timeout: 30000, // Increased timeout to 30 seconds
-      });
+      // Use attendance service
+      let response;
+      if (attendanceType === 'checkin') {
+        response = await adminCheckIn(adminId, photoUri);
+      } else {
+        response = await adminCheckOut(adminId, photoUri);
+      }
 
-      console.log('✅ [API Success] Admin attendance response:', {
-        status: response.status,
-        data: response.data,
-      });
+      console.log('✅ [API Success] Admin attendance response:', response);
 
-      if (response.status === 200 || response.status === 201) {
-        const attendanceData = response.data.attendance;
+      if (response && (response.success || response.message)) {
+        const attendanceData = response.attendance || response;
 
         showCustomAlert(
           `✅ Admin ${attendanceStatus} successful!\n\nWelcome ${adminName}!\n\nTime: ${moment().format(
