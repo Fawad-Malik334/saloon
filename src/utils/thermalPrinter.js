@@ -113,13 +113,16 @@ export const printBillToThermal = async bill => {
     printerPayload += '\x1b3\x00';
 
     // 2. Header
-    printerPayload += 'Client Bill\n';
+    printerPayload += 'Plot 6, PGECHS, Block B-2, near the\n';
+    printerPayload += 'Wapda Town Roundabout, opposite\n';
+    printerPayload += 'Sawera Departmental Store\n';
+    printerPayload += 'Contact: 0300-1042300\n';
     printerPayload += '------------------------------\n';
 
     const now = new Date();
     printerPayload += `Date: ${now.toLocaleDateString()}\nTime: ${now.toLocaleTimeString()}\n`;
 
-    printerPayload += `Client: ${clientName}\nPhone: ${phoneNumber}\nBeautician: ${beautician}\nNotes: ${notes}\n`;
+    printerPayload += `Client: ${clientName}\nBeautician: ${beautician}\nNotes: ${notes}\n`;
     printerPayload += '------------------------------\n';
 
     // 3. Services
