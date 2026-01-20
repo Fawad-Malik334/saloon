@@ -109,14 +109,14 @@ export const printBillToThermal = async bill => {
     // 1. Initialization & Config
     // \x1b@   => Initialize printer
     // \x1b3\x00 => Set line spacing to minimum (0). Adjust if too tight.
-    printerPayload += '\x1b@';
+    // Initialization is handled before logo print
     printerPayload += '\x1b3\x00';
 
     // 2. Header
-    printerPayload += 'Plot 6, PGECHS, Block B-2, near the\n';
-    printerPayload += 'Wapda Town Roundabout, opposite\n';
-    printerPayload += 'Sawera Departmental Store\n';
+    printerPayload += '\x1ba\x01'; // ESC a 1 => Center alignment
+    printerPayload += '6-B2 Punjab Society, Wapda Town\n';
     printerPayload += 'Contact: 0300-1042300\n';
+    printerPayload += '\x1ba\x00'; // ESC a 0 => Left alignment
     printerPayload += '------------------------------\n';
 
     const now = new Date();
@@ -163,6 +163,10 @@ export const printBillToThermal = async bill => {
     try {
       // For react-native-thermal-receipt-printer-image-qr, we can often pass a base64 or local path.
       // Since it's a React Native asset, we use the required asset.
+
+      // Initialize printer BEFORE printing image
+      await BLEPrinter.printText('\x1b@', {});
+
       const logo = require('../assets/images/bill_logo.jpg');
       await BLEPrinter.printImage(logo, { width: 200 }); // Adjust width as needed for 58mm/80mm printers
     } catch (imageError) {
