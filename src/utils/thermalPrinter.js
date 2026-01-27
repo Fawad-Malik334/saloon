@@ -39,7 +39,7 @@ const connectToPrinter = async address => {
   }
 };
 
-const formatLine = (left = '', right = '', width = 30) => {
+const formatLine = (left = '', right = '', width = 42) => {
   const leftText = String(left ?? '').trim();
   const rightText = String(right ?? '').trim();
   const rightWidth = rightText.length;
@@ -114,28 +114,28 @@ export const printBillToThermal = async bill => {
     // ============ BUILD BODY TEXT (Batching everything else) ============
     let body = "";
     body += '\x1ba\x016-B2 Punjab Society, Wapda Town\nContact: 0300-1042300\n';
-    body += `\x1b!\x38INVOICE\x1b!\x00\nDate: ${dateStr} | Time: ${timeStr}\n`;
+    body += `\x1ba\x01\x1b!\x18INVOICE\x1b!\x00\n\x1ba\x00Date: ${dateStr} | Time: ${timeStr}\n`;
     body += '\x1ba\x00'; // Left align details
     if (beautician && beautician !== '-') body += `Beautician: ${beautician}\n`;
     if (notes && notes !== '-') body += `Note: ${notes}\n`;
 
-    body += '--------------------------------\x1ba\x01\x1b!\x38SERVICES\x1b!\x00\x1ba\x00\n';
+    body += '------------------------------------------\n\x1ba\x01\x1b!\x18SERVICE\x1b!\x00\x1ba\x00\n';
     for (const service of services) {
       const name = service.name || service.subServiceName || 'N/A';
       if (/sub\s*total/i.test(name)) continue;
-      body += formatLine(name, Number(service.price || 0).toFixed(2), 30) + '\n';
+      body += formatLine(name, Number(service.price || 0).toFixed(2), 42) + '\n';
     }
-    body += '--------------------------------\n';
-    body += formatLine('Sub Total:', Number(subtotal || 0).toFixed(2), 30) + '\n';
+    body += '------------------------------------------\n';
+    body += formatLine('Sub Total:', Number(subtotal || 0).toFixed(2), 42) + '\n';
     if (gstAmount && Number(gstAmount) > 0) {
-      body += formatLine(`GST (${Number(gstRatePercent || 0).toFixed(2)}%)`, Number(gstAmount).toFixed(2), 30) + '\n';
+      body += formatLine(`GST (${Number(gstRatePercent || 0).toFixed(2)}%)`, Number(gstAmount).toFixed(2), 42) + '\n';
     }
     if (discount && Number(discount) > 0) {
-      body += formatLine('Discount', `-${Number(discount).toFixed(2)}`, 30) + '\n';
+      body += formatLine('Discount', `-${Number(discount).toFixed(2)}`, 42) + '\n';
     }
-    body += '--------------------------------\n';
-    body += `\x1ba\x01\x1b!\x38TOTAL: ${Number(total || 0).toFixed(2)}\x1b!\x00\n`;
-    body += '\x1ba\x00- - - - - - - - - - - - - - - -\n';
+    body += '------------------------------------------\n';
+    body += `\x1ba\x01\x1b!\x18TOTAL: ${Number(total || 0).toFixed(2)}\x1b!\x00\n`;
+    body += '\x1ba\x00- - - - - - - - - - - - - - - - - - - - -\n';
     body += '\x1ba\x01Thank you! Visit again\n';
 
     // Send the entire text block for smooth, continuous printing
