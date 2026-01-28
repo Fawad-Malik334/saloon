@@ -100,7 +100,7 @@ export const printBillToThermal = async bill => {
     const timeStr = `${hours}:${minutes} ${ampm}`;
 
     // 1. Initialize printer
-    await BLEPrinter.printText('\x1b@\x1b\x33\x18', {});
+    await BLEPrinter.printText('\x1b@', {});
 
     // ============ LOGO ============
     try {
@@ -114,12 +114,12 @@ export const printBillToThermal = async bill => {
     // ============ BUILD BODY TEXT (Batching everything else) ============
     let body = "";
     body += '\x1ba\x016-B2 Punjab Society, Wapda Town\nContact: 0300-1042300\n';
-    body += `\x1ba\x01\x1b!\x18INVOICE\x1b!\x00\n\x1ba\x00Date: ${dateStr} | Time: ${timeStr}\n`;
-    body += '\x1ba\x00'; // Left align details
+    body += `\x1ba\x01\x1b!\x18INVOICE\x1b!\x00\nDate: ${dateStr} | Time: ${timeStr}\n`;
+    // Center align details (inherited from previous \x1ba\x01)
     if (beautician && beautician !== '-') body += `Beautician: ${beautician}\n`;
     if (notes && notes !== '-') body += `Note: ${notes}\n`;
 
-    body += '------------------------------------------\n\x1ba\x01\x1b!\x18SERVICE\x1b!\x00\x1ba\x00\n';
+    body += '------------------------------------------\n\x1ba\x01\x1b!\x18SERVICE\x1b!\x00\n';
     for (const service of services) {
       const name = service.name || service.subServiceName || 'N/A';
       if (/sub\s*total/i.test(name)) continue;
@@ -135,7 +135,7 @@ export const printBillToThermal = async bill => {
     }
     body += '------------------------------------------\n';
     body += `\x1ba\x01\x1b!\x18TOTAL: ${Number(total || 0).toFixed(2)}\x1b!\x00\n`;
-    body += '\x1ba\x00- - - - - - - - - - - - - - - - - - - - -\n';
+    body += '- - - - - - - - - - - - - - - - - - - - -\n';
     body += '\x1ba\x01Thank you! Visit again\n';
 
     // Send the entire text block for smooth, continuous printing
