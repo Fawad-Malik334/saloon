@@ -23,6 +23,7 @@ import { printBillToThermal } from '../../../../utils/thermalPrinter';
 
 // Correct import path for your GST API file
 import { getGstConfig } from '../../../../api/gst';
+import { createInvoicePDF } from '../../../../utils/pdfGenerator';
 
 const { width, height } = Dimensions.get('window');
 
@@ -368,6 +369,27 @@ const PrintBillModal = ({ isVisible, onClose, billData }) => {
     }
   };
 
+  const handleDownloadThermalPDF = async () => {
+    try {
+      const billForPdf = {
+        clientName: clientDetails,
+        phoneNumber,
+        notes,
+        beautician,
+        services,
+        subtotal: subTotal,
+        discount,
+        gstAmount: calculatedGST,
+        gstRatePercent: gstConfig?.enabled ? parseFloat(gstConfig.ratePercent || 0) : 0,
+        total: calculatedTotal,
+      };
+      await createInvoicePDF(billForPdf);
+    } catch (error) {
+      console.error('Thermal PDF Error:', error);
+      Alert.alert('Error', 'Failed to generate Thermal PDF');
+    }
+  };
+
   return (
     <Modal
       animationType="fade"
@@ -476,6 +498,15 @@ const PrintBillModal = ({ isVisible, onClose, billData }) => {
               <Text style={styles.printBillButtonText}>Download PDF</Text>
             </TouchableOpacity>
 
+
+
+            <TouchableOpacity
+              style={[styles.printBillButton, { backgroundColor: '#2196F3' }]}
+              onPress={handleDownloadThermalPDF}
+            >
+              <Text style={styles.printBillButtonText}>Thermal PDF</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.printBillButton, { backgroundColor: '#4CAF50' }]}
               onPress={handleThermalPrint}
@@ -490,7 +521,7 @@ const PrintBillModal = ({ isVisible, onClose, billData }) => {
           </View>
         </View>
       </View>
-    </Modal>
+    </Modal >
   );
 };
 
