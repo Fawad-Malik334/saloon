@@ -111,31 +111,61 @@ export const printBillToThermal = async bill => {
       await BLEPrinter.printText('\x1ba\x01\x1b!\x38SARTE SALON\x1b!\x00\n', {});
     }
 
-    // ============ BUILD BODY TEXT (Batching everything else) ============
+    // ============ BUILD BODY TEXT (Matching Thermal PDF Theme) ============
     let body = "";
-    body += '\x1ba\x016-B2 Punjab Society, Wapda Town\nContact: 0300-1042300\n';
-    body += `\x1ba\x01\x1b!\x18INVOICE\x1b!\x00\nDate: ${dateStr} | Time: ${timeStr}\n`;
-    // Center align details (inherited from previous \x1ba\x01)
+
+    // Header section - centered
+    body += '\x1ba\x016-B2 Punjab Society, Wapda Town\n';
+    body += 'Contact: 0300-1042300\n';
+    body += '\n'; // Blank line for spacing
+
+    // Invoice title - bold and centered
+    body += '\x1b!\x18INVOICE\x1b!\x00\n';
+    body += `Date: ${dateStr} | Time: ${timeStr}\n`;
+
+    // Optional details - centered
     if (beautician && beautician !== '-') body += `Beautician: ${beautician}\n`;
     if (notes && notes !== '-') body += `Note: ${notes}\n`;
 
-    body += '------------------------------------------\n\x1ba\x01\x1b!\x18SERVICE\x1b!\x00\n';
+    // Divider
+    body += '- - - - - - - - - - - - - - - - - - - - -\n';
+
+    // Services section header - bold and centered
+    body += '\x1b!\x18SERVICE\x1b!\x00\n';
+    body += '\n'; // Blank line for spacing
+
+    // Services list - left aligned
+    body += '\x1ba\x00'; // Left align for services
     for (const service of services) {
       const name = service.name || service.subServiceName || 'N/A';
       if (/sub\s*total/i.test(name)) continue;
       body += formatLine(name, Number(service.price || 0).toFixed(2), 42) + '\n';
     }
-    body += '------------------------------------------\n';
+
+    // Divider before totals
+    body += '- - - - - - - - - - - - - - - - - - - - -\n';
+
+    // Totals section - left aligned
     body += formatLine('Sub Total:', Number(subtotal || 0).toFixed(2), 42) + '\n';
+
     if (gstAmount && Number(gstAmount) > 0) {
       body += formatLine(`GST (${Number(gstRatePercent || 0).toFixed(2)}%)`, Number(gstAmount).toFixed(2), 42) + '\n';
     }
+
     if (discount && Number(discount) > 0) {
       body += formatLine('Discount', `-${Number(discount).toFixed(2)}`, 42) + '\n';
     }
-    body += '------------------------------------------\n';
-    body += `\x1ba\x01\x1b!\x18TOTAL: ${Number(total || 0).toFixed(2)}\x1b!\x00\n`;
+
+    // Final divider
     body += '- - - - - - - - - - - - - - - - - - - - -\n';
+
+    // Total - bold and centered
+    body += `\x1ba\x01\x1b!\x18TOTAL: ${Number(total || 0).toFixed(2)}\x1b!\x00\n`;
+
+    // Bottom divider
+    body += '- - - - - - - - - - - - - - - - - - - - -\n';
+
+    // Thank you message - centered
     body += '\x1ba\x01Thank you! Visit again\n';
 
     // Send the entire text block for smooth, continuous printing
