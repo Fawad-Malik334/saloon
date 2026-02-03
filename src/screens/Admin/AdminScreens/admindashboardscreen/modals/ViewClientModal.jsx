@@ -102,6 +102,7 @@ const ViewBillModal = ({ isVisible, onClose, billData, client }) => {
           ? parseFloat(gstConfig.ratePercent || 0)
           : 0,
         total: calculatedTotal,
+        date: billDate, // Pass the actual bill date
       };
 
       console.log('[ViewBillModal/Admin] billForPrinter payload:', billForPrinter);
