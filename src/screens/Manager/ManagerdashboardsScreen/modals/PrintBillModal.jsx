@@ -44,6 +44,7 @@ const PrintBillModal = ({ isVisible, onClose, billData }) => {
   const notes = billData?.notes || '-';
   const beautician = billData?.beautician || '-';
   const discount = billData?.discount || 0;
+  const billDate = billData?.date || billData?.createdAt || new Date().toISOString();
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -334,6 +335,7 @@ const PrintBillModal = ({ isVisible, onClose, billData }) => {
           ? parseFloat(gstConfig.ratePercent || 0)
           : 0,
         total: calculatedTotal,
+        date: billDate, // Pass the actual bill date
       };
 
       console.log('[PrintBillModal] billForPrinter payload:', billForPrinter);

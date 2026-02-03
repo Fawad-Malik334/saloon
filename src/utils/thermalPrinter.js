@@ -140,20 +140,22 @@ export const printBillToThermal = async bill => {
             gstAmount = 0,
             gstRatePercent = 0,
             total = 0,
+            date: billDate, // Get the bill date from database
         } = bill;
 
         const beautician = sanitizeForPrinter(rawBeautician, '-');
         const notes = sanitizeForPrinter(rawNotes, '-');
 
-        const now = new Date();
+        // Use the bill's date if provided, otherwise use current date
+        const dateToUse = billDate ? new Date(billDate) : new Date();
         const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        const day = now.getDate().toString();
-        const currentMonth = months[now.getMonth()];
-        const year = now.getFullYear();
-        let hours = now.getHours();
+        const day = dateToUse.getDate().toString();
+        const currentMonth = months[dateToUse.getMonth()];
+        const year = dateToUse.getFullYear();
+        let hours = dateToUse.getHours();
         const ampm = hours >= 12 ? 'PM' : 'AM';
         hours = hours % 12 || 12;
-        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const minutes = dateToUse.getMinutes().toString().padStart(2, '0');
         const dateStr = `${currentMonth} ${day}, ${year}`;
         const timeStr = `${hours}:${minutes} ${ampm}`;
 
