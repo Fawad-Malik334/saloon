@@ -1,7 +1,11 @@
-﻿import { Alert } from 'react-native';
+import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BLEPrinter } from 'react-native-thermal-receipt-printer-image-qr';
 
+const PRINTER_MAC_STORAGE_KEY = 'THERMAL_PRINTER_MAC';
+
 let cachedDeviceAddress = null;
+let isBLEInitialized = false; // Track BLE init state so we only call init() once
 let isPrinting = false; // Print lock to prevent concurrent jobs
 
 export const setThermalPrinterAddress = address => {
@@ -9,6 +13,25 @@ export const setThermalPrinterAddress = address => {
 };
 
 export const getThermalPrinterAddress = () => cachedDeviceAddress;
+
+/**
+ * Loads the saved printer MAC from AsyncStorage into the in-memory cache.
+ * Called automatically before printing so the saved printer works even if
+ * the Printer Settings screen was never opened in this session.
+ */
+export const loadSavedPrinterAddress = async () => {
+    if (cachedDeviceAddress) return cachedDeviceAddress;
+    try {
+        const savedMac = await AsyncStorage.getItem(PRINTER_MAC_STORAGE_KEY);
+        if (savedMac) {
+            cachedDeviceAddress = savedMac;
+        }
+        return cachedDeviceAddress;
+    } catch (e) {
+        console.error('[ThermalPrinter] Failed to load saved printer address:', e);
+        return null;
+    }
+};
 
 const sanitizeForPrinter = (value, fallback = '-') => {
     try {
@@ -29,13 +52,24 @@ const sanitizeForPrinter = (value, fallback = '-') => {
 
 const connectToPrinter = async address => {
     try {
-        const target = address || cachedDeviceAddress;
+        // If no address provided, fall back to in-memory cache, then AsyncStorage
+        const target = address || (await loadSavedPrinterAddress());
         if (!target) throw new Error('No printer selected. Please pair and set a printer first.');
-        await BLEPrinter.init();
+
+        // Only initialise the BLE module once per app session to avoid
+        // resetting the adapter (which drops active connections).
+        if (!isBLEInitialized) {
+            await BLEPrinter.init();
+            isBLEInitialized = true;
+        }
+
         await BLEPrinter.connectPrinter(target);
         cachedDeviceAddress = target;
     } catch (error) {
         console.error('[ThermalPrinter] Connect error:', error);
+        // If the connection attempt itself failed, reset the init flag so we
+        // retry a full init on the next attempt (handles BT adapter restarts).
+        isBLEInitialized = false;
         throw new Error('Failed to connect to printer. Please make sure it is on and paired.');
     }
 };
